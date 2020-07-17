@@ -1,6 +1,6 @@
 # IDPass for Java
 
-[![CircleCI](https://circleci.com/gh/newlogic42/lab_idpass-lite-java.svg?style=svg&circle-token=8d3b9b9fe5cd3ffc0884b5fac81bc9e779e9f1a9)](https://circleci.com/gh/newlogic42/lab_idpass-lite-java)
+[![CircleCI](https://circleci.com/gh/idpass/idpass-lite-java.svg?style=svg&circle-token=4fb5cc4cfe96b754d1842c2443ee638608bc4755)](https://circleci.com/gh/newlogic42/lab_idpass-lite-java)
 
 This is a Java wrapper over the [libidpasslite](https://github.com/newlogic42/lab_idpass_lite) library that provides developers with an API to interact with ID PASS cards.
 
