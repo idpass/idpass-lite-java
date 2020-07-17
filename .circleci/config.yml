@@ -1,0 +1,11 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: gradle:latest
+    steps:
+      - checkout
+      - run:
+          name: "build & test"
+          command: ./gradlew build

@@ -1,0 +1,187 @@
+
+plugins {
+    id 'java-library'
+    id 'application'
+    //id 'signing'
+    id 'maven-publish'
+    id "com.jfrog.bintray" version "1.8.4"
+}
+
+ext {
+    artifactId = "idpass-lite-java"
+    groupId = "org.idpass"
+    version = '0.0.1'
+    description = "IDPass (Java) is a wrapper API of libidpasslite.so"
+}
+
+repositories {
+    mavenCentral()
+    google()
+    jcenter()
+}
+
+group project.ext.groupId
+version = project.ext.version
+
+mainClassName = "org.idpass.IDPass"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+sourceSets {
+    main {
+        resources {
+            srcDirs "src/main/resources"
+        }
+    }
+}
+
+// Dependencies
+dependencies {
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.mockito:mockito-core:2.28.2'
+
+    //////////////// idpass //////////////////////
+    implementation 'com.google.protobuf:protobuf-java:3.12.2'
+    implementation 'com.google.zxing:core:3.4.0'
+    implementation 'com.google.zxing:javase:3.4.0'
+    implementation 'at.favre.lib:bytes:1.3.0'
+    implementation files('src/main/java/proto/card_access.proto.jar')
+}
+
+// Tasks
+//signing {
+//    // This will use the GPG Agent
+//    // to sign the jar
+//    useGpgCmd()
+//    sign configurations.archives
+//}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+//task signPom(type: Sign) {
+//    sign project.file("$buildDir/publications/mavenJava/pom-default.xml")
+//
+//    // The signing plugin does not seem to notice
+//    // it when the publications folder with the
+//    // signature has been deleted. So we always
+//    // create a new signature
+//    outputs.upToDateWhen { false }
+//}
+
+artifacts {
+    archives sourcesJar, javadocJar
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId project.ext.groupId
+            artifactId project.ext.artifactId
+            version project.ext.version
+            artifact sourcesJar
+            artifact javadocJar
+
+
+            project.tasks.withType(Sign) {
+                signatures.all {
+                    def type = it.type
+                    if (it.file.name.endsWith('.tar.gz.asc')) {
+                        // Workaround in case a tar.gz file should published
+                        type = 'tar.gz.asc'
+                    } else if (it.type.equals('xml.asc')) {
+                        // Set correct extension for signature of pom file
+                        type = 'pom.asc'
+                    }
+                    artifact source: it.file, classifier: it.classifier ?: null, extension: type
+                }
+            }
+
+            pom.withXml {
+                def root = asNode()
+                root.appendNode('description', project.ext.description)
+                root.appendNode('name', project.ext.artifactId)
+                root.appendNode('url', 'https://github.com/newlogic42/lab_idpass-lite-java')
+
+                def scm = root.appendNode('scm')
+                scm.appendNode("connection", "scm:git:git://github.com/newlogic42/lab_idpass-lite-java.git")
+                scm.appendNode("developerConnection", "scm:git:ssh://github.com/newlogic42/lab_idpass-lite-java")
+                scm.appendNode("url", "http://github.com/newlogic42/lab_idpass-lite-java")
+
+                def license = root.appendNode('licenses').appendNode('license')
+                license.appendNode('name', 'Mozilla Public License, Version 2.0')
+                license.appendNode('url', 'http://www.mozilla.org/MPL/2.0/index.txt')
+                license.appendNode('distribution', 'repo')
+
+                def developer = root.appendNode('developers').appendNode('developer')
+                developer.appendNode('name', 'Newlogic Impact Lab')
+                developer.appendNode('email', 'dexter@newlogic.io')
+            }
+        }
+    }
+}
+
+bintray {
+    user = findProperty("bintray.user")
+    key = findProperty("bintray.apiKey")
+    publications = ['mavenJava']
+    publish = true
+    pkg {
+        repo = 'idpass-lite-maven'
+        name = project.ext.artifactId
+        userOrg = 'idpass'
+        desc = project.ext.description
+        licenses = ['MPL-2.0']
+        issueTrackerUrl = "https://github.com/newlogic42/lab_idpass-lite-java/issues"
+        vcsUrl = 'https://github.com/newlogic42/lab_idpass-lite-java.git'
+
+        version {
+            name = project.ext.version
+            released = new java.util.Date()
+            vcsTag = project.ext.version
+        }
+    }
+}
+
+//model {
+//    tasks.publishMavenJavaPublicationToMavenLocal {
+//        dependsOn project.tasks.withType(Sign)
+//    }
+//    tasks.signPom {
+//        dependsOn tasks.generatePomFileForMavenJavaPublication
+//    }
+//}
+
+tasks.withType(Test) {
+    // a collection to track failedTests
+    ext.failedTests = []
+
+    afterTest { descriptor, result ->
+        if (result.resultType == TestResult.ResultType.FAILURE) {
+            String failedTest = "${descriptor.className}::${descriptor.name}"
+            logger.debug("Adding " + failedTest + " to failedTests...")
+            failedTests << [failedTest]
+        }
+    }
+
+    afterSuite { suite, result ->
+        if (!suite.parent) { // will match the outermost suite
+            // logs each failed test
+            if (!failedTests.empty) {
+                logger.lifecycle("Failed tests:")
+                failedTests.each { failedTest ->
+                    logger.lifecycle("${failedTest}")
+                }
+            }
+        }
+    }
+}
