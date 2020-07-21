@@ -120,7 +120,18 @@ public class IDPassReader {
      * @throws IDPassException ID PASS exception
      */
     public IDPassReader(byte[] encryptionKey, byte[] signatureKey) throws IDPassException {
-        this(encryptionKey, signatureKey, null);
+        this(encryptionKey, signatureKey, null, null);
+    }
+
+    /**
+     * Instantiates an instance of the library
+     * @param encryptionKey is used to encrypt/decrypt the private content of a card
+     * @param signatureKey is used to sign a created card
+     * @param verificationKeys is a list of trusted public keys
+     * @throws IDPassException ID PASS exception
+     */
+    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys) throws IDPassException {
+        this(encryptionKey, signatureKey, verificationKeys, null);
     }
 
     /**
@@ -128,9 +139,10 @@ public class IDPassReader {
      * @param encryptionKey is used to encrypt/decrypt the private content of a card
      * @param signatureKey is used to sign a created card
      * @param verificationKeys is a list of trusted public keys
+     * @param rootCertificates is a list of trusted root certificate
      * @throws IDPassException ID PASS exception
      */
-    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys)
+    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys, byte[][] rootCertificates)
             throws IDPassException {
 
         if(verificationKeys == null) {
@@ -150,6 +162,7 @@ public class IDPassReader {
         this.encryptionKey    = encryptionKey.clone();
         this.signatureKey     = signatureKey.clone();
 
+        //TODO add `rootCertificates` to the parameter
         ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys);
         if (ctx == 0) {
             throw new IDPassException("ID PASS Lite could not be initialized");
@@ -312,6 +325,17 @@ public class IDPassReader {
         facediff = buffer.getFloat();
 
         return facediff;
+    }
+
+
+    public void addBlacklistedKey(byte[] publicKey) {
+
+        //TODO call the Cpp to add to the blacklist it.
+    }
+
+    public void addBlacklistedKeys(byte[][] publicKey) {
+
+        //TODO call the Cpp to add to the blacklist it.
     }
 
     /**
@@ -481,6 +505,21 @@ public class IDPassReader {
     public static byte[] generateSecretSignatureKey()
     {
         return generate_secret_signature_key();
+    }
+
+
+    public static byte[] generateRootCertificate(byte[] secretKey) {
+
+        //TODO call the Cpp to create it.
+        //return the certificate
+        return new byte[128];
+    }
+
+    public static byte[] generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey) {
+
+        //TODO call the Cpp to create it.
+        //return the certificate
+        return new byte[128];
     }
 
 }
