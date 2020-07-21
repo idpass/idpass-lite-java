@@ -328,14 +328,14 @@ public class IDPassReader {
     }
 
 
-    public void addBlacklistedKey(byte[] publicKey) {
+    public void addRevokedKey(byte[] publicKey) {
 
-        //TODO call the Cpp to add to the blacklist it.
+        //TODO call the Cpp to add to the list of revoked keys.
     }
 
-    public void addBlacklistedKeys(byte[][] publicKey) {
+    public void addRevokedKeys(byte[][] publicKey) {
 
-        //TODO call the Cpp to add to the blacklist it.
+        //TODO call the Cpp to add to the list of revoked keys.
     }
 
     /**
