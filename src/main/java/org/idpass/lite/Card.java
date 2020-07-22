@@ -69,7 +69,8 @@ public class Card {
                 HashMap<String, String> publicExtra,
                 HashMap<String, String> privateExtra,
                 byte[] photo,
-                String pin) throws IDPassException {
+                String pin,
+               byte[][] certificates) throws IDPassException {
         this.reader = idPassReader;
         byte[] card = this.reader.createNewCard(
                 surname,
@@ -79,7 +80,8 @@ public class Card {
                 publicExtra,
                 privateExtra,
                 photo,
-                pin);
+                pin,
+                certificates);
 
         try {
             this.cards = IDPassCards.parseFrom(card);

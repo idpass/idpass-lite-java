@@ -224,8 +224,9 @@ public class IDPassReader {
                         HashMap<String, String> publicExtra,
                         HashMap<String, String> privateExtra,
                         byte[] photo,
-                        String pin) throws IDPassException {
-        return new Card(this, surname, givenName, dateOfBirth, placeOfBirth, publicExtra, privateExtra, photo, pin);
+                        String pin,
+                        byte[][] certificates) throws IDPassException {
+        return new Card(this, surname, givenName, dateOfBirth, placeOfBirth, publicExtra, privateExtra, photo, pin, certificates);
     }
 
     /**
@@ -421,7 +422,8 @@ public class IDPassReader {
                                    HashMap<String, String> publicExtra,
                                    HashMap<String, String> privateExtra,
                                    byte[] photo,
-                                   String pin) throws IDPassException {
+                                   String pin,
+                                   byte[][] certificates) throws IDPassException {
         Dictionary.Builder builder = Dictionary.newBuilder();
 
         if (publicExtra != null) {
