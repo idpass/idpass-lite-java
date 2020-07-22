@@ -163,7 +163,12 @@ public class IDPassReader {
         this.signatureKey     = signatureKey.clone();
 
         //TODO add `rootCertificates` to the parameter
-        ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys);
+        byte[] signer1 = IDPassReader.generateSecretSignatureKey();
+        byte[] signer2 = IDPassReader.generateSecretSignatureKey();
+        byte[] rootCert = IDPassReader.generateRootCertificate(signer1);
+        byte[] childCert = IDPassReader.generateChildCertificate(signer1, signer2);
+
+        ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys, childCert);
         if (ctx == 0) {
             throw new IDPassException("ID PASS Lite could not be initialized");
         }
@@ -216,6 +221,7 @@ public class IDPassReader {
      * @param photo The photo bytes array
      * @param pin The card owner personal pin code
      * @throws IDPassException ID PASS exception
+     * @return Returns Card object
      */
     public Card newCard(String surname,
                         String givenName,
@@ -328,21 +334,25 @@ public class IDPassReader {
     }
 
 
-    public void addRevokedKey(byte[] publicKey) {
+    public static void addRevokedKey(byte[] publicKey) {
 
         //TODO call the Cpp to add to the list of revoked keys.
+        add_revoked_key(publicKey);
     }
 
-    public void addRevokedKeys(byte[][] publicKey) {
-
+    public static void addRevokedKeys(byte[][] publicKey)
+    {
         //TODO call the Cpp to add to the list of revoked keys.
+        for (byte[] key : publicKey) {
+            add_revoked_key(key);
+        }
     }
 
     /**
      * These are the C functions documented in the idpass.h header file
      */
     //========================== JNI section =============================
-    private native long idpass_init(byte[] enc, byte[] sig, byte[] verif);
+    private native long idpass_init(byte[] enc, byte[] sig, byte[] verif, byte[] chainCerts);
     private native byte[] ioctl(long ctx, byte[] cmd);
 
     private native byte[] create_card_with_face(
@@ -368,7 +378,10 @@ public class IDPassReader {
     private static native byte[] generate_encryption_key(); // 32
     private static native byte[] generate_secret_signature_key(); // 64
     private native byte[] card_decrypt(long ctx, byte[] ecard, byte[] key);
-    private native float compare_face_template(long ctx, byte[] face1, byte[] face2);
+    private native float compare_face_template(byte[] face1, byte[] face2);
+    private static native byte[] generate_root_certificate(byte[] secretKey);
+    private static native byte[] generate_child_certificate(byte[] parentSecretKey, byte[] childSecretKey);
+    private static native void add_revoked_key(byte[] pubkey);
     //=========================================================
 
     /**
@@ -508,18 +521,32 @@ public class IDPassReader {
     }
 
 
-    public static byte[] generateRootCertificate(byte[] secretKey) {
+    public static byte[] generateRootCertificate(byte[] secretKey)
+    {
+        // byte layout:
+        // - secretKey .......... 64
+        // - signature .......... 64
 
         //TODO call the Cpp to create it.
         //return the certificate
-        return new byte[128];
+        //return new byte[128];
+        byte[] key = generate_root_certificate(secretKey);
+        return key;
     }
 
-    public static byte[] generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey) {
+    public static byte[] generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
+    {
+        // byte layout:
+        // - pubkey (childSecretKey[32:64]) ............. 32
+        // - issuer_pubkey (parentSecretKey[32:64]) ..... 32
+        // - signature(pubkey, parentSecretKey) ......... 64
 
         //TODO call the Cpp to create it.
         //return the certificate
-        return new byte[128];
+        //return new byte[128];
+
+        byte[] key = generate_child_certificate(parentSecretKey, childSecretKey);
+        return key;
     }
 
 }

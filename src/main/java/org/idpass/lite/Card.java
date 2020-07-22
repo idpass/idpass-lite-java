@@ -148,8 +148,8 @@ public class Card {
      * Match the face present in the photo with the one in the card.
      * If it match access to the private part of the card is given.
      * @param photo of the card holder
-     * @throws CardVerificationException
-     * @throws InvalidCardException
+     * @throws CardVerificationException custom exception
+     * @throws InvalidCardException custom exception
      */
     public void authenticateWithFace(byte[] photo) throws CardVerificationException, InvalidCardException {
         byte[] ecard = cards.getEncryptedCard().toByteArray();
@@ -162,8 +162,8 @@ public class Card {
      * Match the pin with the one in the card
      * If it match access to the private part of the card is given.
      * @param pin Pin code of the card holder
-     * @throws CardVerificationException
-     * @throws InvalidCardException
+     * @throws CardVerificationException custom exception
+     * @throws InvalidCardException custom exception
      */
     public void authenticateWithPIN(String pin) throws CardVerificationException, InvalidCardException {
         byte[] ecard = cards.getEncryptedCard().toByteArray();
