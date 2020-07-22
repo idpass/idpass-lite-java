@@ -67,6 +67,15 @@ public class TestCases {
     }
 
     @Test
+    public void testCertkeyGeneration()
+    {
+        byte[] skpk = IDPassReader.generateSecretSignatureKey();
+        byte[] child_skpk = IDPassReader.generateSecretSignatureKey();
+        byte[] rootCert = IDPassReader.generateRootCertificate(skpk);
+        byte[] childCert = IDPassReader.generateChildCertificate(skpk, child_skpk);
+    }
+
+    @Test
     public void testcreateCard()
             throws IOException, IDPassException {
 
