@@ -59,6 +59,7 @@ public class Card {
      * @param privateExtra Arbitrary key/value pairs to reside in teh private region
      * @param photo The photo bytes array
      * @param pin The card owner personal pin code
+     * @param certificates Trusted certificate chain
      * @throws IDPassException ID PASS exception
      */
     protected Card(IDPassReader idPassReader,
@@ -69,7 +70,8 @@ public class Card {
                 HashMap<String, String> publicExtra,
                 HashMap<String, String> privateExtra,
                 byte[] photo,
-                String pin) throws IDPassException {
+                String pin,
+                byte[][] certificates) throws IDPassException {
         this.reader = idPassReader;
         byte[] card = this.reader.createNewCard(
                 surname,
@@ -79,7 +81,8 @@ public class Card {
                 publicExtra,
                 privateExtra,
                 photo,
-                pin);
+                pin,
+                certificates);
 
         try {
             this.cards = IDPassCards.parseFrom(card);

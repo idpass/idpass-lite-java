@@ -43,6 +43,7 @@ import static org.junit.Assert.*;
 public class TestCases {
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
+    byte[] verificationkey  = Arrays.copyOfRange(signaturekey, 32, 64);
 
     private Card newTestCard(IDPassReader reader) throws IDPassException, IOException {
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
@@ -62,8 +63,42 @@ public class TestCases {
                 pubExtras,
                 privExtras,
                 photo,
-                "1234");
+                "1234",
+                null);
         return card;
+    }
+
+    @Test
+    public void testcreateCardWithCertificates()
+            throws IOException, IDPassException
+    {
+        byte[] signer1 = IDPassReader.generateSecretSignatureKey();
+        byte[] signer2 = IDPassReader.generateSecretSignatureKey();
+        byte[] rootCert = IDPassReader.generateRootCertificate(signer1);
+        byte[] childCert = IDPassReader.generateChildCertificate(signer1, signer2);
+
+        byte[][] certificates = new byte[1][];
+        certificates[0] = childCert;
+
+        byte[][] vkeys = new byte[1][];
+        vkeys[0] = verificationkey;
+
+        IDPassReader reader = new IDPassReader(encryptionkey, signaturekey, vkeys, rootCert);
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+
+        Card card = reader.newCard(
+                "John",
+                "Doe",
+                new Date(),
+                "Aubusson, France",
+                null,
+                null,
+                photo,
+                "1234",certificates);
+
+        assertNotNull(card);
+        assertTrue(card.asBytes().length > 0);
     }
 
     @Test
@@ -82,7 +117,7 @@ public class TestCases {
                 null,
                 null,
                 photo,
-                "1234");
+                "1234",null);
 
         assertNotNull(card);
         assertTrue(card.asBytes().length > 0);

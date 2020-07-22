@@ -139,10 +139,10 @@ public class IDPassReader {
      * @param encryptionKey is used to encrypt/decrypt the private content of a card
      * @param signatureKey is used to sign a created card
      * @param verificationKeys is a list of trusted public keys
-     * @param rootCertificates is a list of trusted root certificate
+     * @param rootCertificate is a root certificate
      * @throws IDPassException ID PASS exception
      */
-    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys, byte[][] rootCertificates)
+    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys, byte[] rootCertificate)
             throws IDPassException {
 
         if(verificationKeys == null) {
@@ -162,13 +162,8 @@ public class IDPassReader {
         this.encryptionKey    = encryptionKey.clone();
         this.signatureKey     = signatureKey.clone();
 
-        //TODO add `rootCertificates` to the parameter
-        byte[] signer1 = IDPassReader.generateSecretSignatureKey();
-        byte[] signer2 = IDPassReader.generateSecretSignatureKey();
-        byte[] rootCert = IDPassReader.generateRootCertificate(signer1);
-        byte[] childCert = IDPassReader.generateChildCertificate(signer1, signer2);
-
-        ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys, childCert);
+        // add `rootCertificates` to the parameter
+        ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys, rootCertificate);
         if (ctx == 0) {
             throw new IDPassException("ID PASS Lite could not be initialized");
         }
@@ -220,6 +215,7 @@ public class IDPassReader {
      * @param privateExtra Arbitrary key/value pairs to reside in teh private region
      * @param photo The photo bytes array
      * @param pin The card owner personal pin code
+     * @param certificates Trusted certificate chain
      * @throws IDPassException ID PASS exception
      * @return Returns Card object
      */
@@ -230,8 +226,9 @@ public class IDPassReader {
                         HashMap<String, String> publicExtra,
                         HashMap<String, String> privateExtra,
                         byte[] photo,
-                        String pin) throws IDPassException {
-        return new Card(this, surname, givenName, dateOfBirth, placeOfBirth, publicExtra, privateExtra, photo, pin);
+                        String pin,
+                        byte[][] certificates) throws IDPassException {
+        return new Card(this, surname, givenName, dateOfBirth, placeOfBirth, publicExtra, privateExtra, photo, pin, certificates);
     }
 
     /**
@@ -352,7 +349,7 @@ public class IDPassReader {
      * These are the C functions documented in the idpass.h header file
      */
     //========================== JNI section =============================
-    private native long idpass_init(byte[] enc, byte[] sig, byte[] verif, byte[] chainCerts);
+    private native long idpass_init(byte[] enc, byte[] sig, byte[] verif, byte[] rootcertificate);
     private native byte[] ioctl(long ctx, byte[] cmd);
 
     private native byte[] create_card_with_face(
@@ -382,6 +379,7 @@ public class IDPassReader {
     private static native byte[] generate_root_certificate(byte[] secretKey);
     private static native byte[] generate_child_certificate(byte[] parentSecretKey, byte[] childSecretKey);
     private static native void add_revoked_key(byte[] pubkey);
+    public native void add_certificate(long ctx, byte[] pubkey);
     //=========================================================
 
     /**
@@ -424,6 +422,7 @@ public class IDPassReader {
      * @param privateExtra Arbitrary key/value pairs to reside in the private region
      * @param photo The face of the person to be issued. This shall be used as an access condition to open the card.
      * @param pin  A personal pin code the person chooses. This is an alternative access condition to open the card.
+     * @param certificates Trusted certificate chain
      * @return The card content including the public and private parts
      * @throws IDPassException ID PASS exception
      */
@@ -434,7 +433,8 @@ public class IDPassReader {
                                    HashMap<String, String> publicExtra,
                                    HashMap<String, String> privateExtra,
                                    byte[] photo,
-                                   String pin) throws IDPassException {
+                                   String pin,
+                                   byte[][] certificates) throws IDPassException {
         Dictionary.Builder builder = Dictionary.newBuilder();
 
         if (publicExtra != null) {
@@ -456,6 +456,12 @@ public class IDPassReader {
         }
 
         Dictionary serializedPrivateExtra = builder.build();
+
+        if (certificates != null) {
+            for (byte[] certificate : certificates) {
+                add_certificate(ctx, certificate);
+            }
+        }
 
         byte[] ecard = create_card_with_face(ctx,
                 surname,
