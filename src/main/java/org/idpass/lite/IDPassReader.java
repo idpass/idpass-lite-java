@@ -139,10 +139,10 @@ public class IDPassReader {
      * @param encryptionKey is used to encrypt/decrypt the private content of a card
      * @param signatureKey is used to sign a created card
      * @param verificationKeys is a list of trusted public keys
-     * @param rootCertificate is a root certificate
+     * @param rootCertificates is a list of root certificates
      * @throws IDPassException ID PASS exception
      */
-    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys, byte[] rootCertificate)
+    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys, byte[][] rootCertificates)
             throws IDPassException {
 
         if(verificationKeys == null) {
@@ -163,7 +163,7 @@ public class IDPassReader {
         this.signatureKey     = signatureKey.clone();
 
         // add `rootCertificates` to the parameter
-        ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys, rootCertificate);
+        ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys, rootCertificates);
         if (ctx == 0) {
             throw new IDPassException("ID PASS Lite could not be initialized");
         }
@@ -215,7 +215,7 @@ public class IDPassReader {
      * @param privateExtra Arbitrary key/value pairs to reside in teh private region
      * @param photo The photo bytes array
      * @param pin The card owner personal pin code
-     * @param certificates Trusted certificate chain
+     * @param certificates Certificate chain
      * @throws IDPassException ID PASS exception
      * @return Returns Card object
      */
@@ -349,7 +349,7 @@ public class IDPassReader {
      * These are the C functions documented in the idpass.h header file
      */
     //========================== JNI section =============================
-    private native long idpass_init(byte[] enc, byte[] sig, byte[] verif, byte[] rootcertificate);
+    private native long idpass_init(byte[] enc, byte[] sig, byte[] verif, byte[][] rootcertificates);
     private native byte[] ioctl(long ctx, byte[] cmd);
 
     private native byte[] create_card_with_face(
@@ -379,7 +379,7 @@ public class IDPassReader {
     private static native byte[] generate_root_certificate(byte[] secretKey);
     private static native byte[] generate_child_certificate(byte[] parentSecretKey, byte[] childSecretKey);
     private static native void add_revoked_key(byte[] pubkey);
-    public native void add_certificate(long ctx, byte[] pubkey);
+    private native boolean add_certificates(long ctx, byte[][] pubkey);
     //=========================================================
 
     /**
@@ -422,7 +422,7 @@ public class IDPassReader {
      * @param privateExtra Arbitrary key/value pairs to reside in the private region
      * @param photo The face of the person to be issued. This shall be used as an access condition to open the card.
      * @param pin  A personal pin code the person chooses. This is an alternative access condition to open the card.
-     * @param certificates Trusted certificate chain
+     * @param certificates Certificate chain
      * @return The card content including the public and private parts
      * @throws IDPassException ID PASS exception
      */
@@ -458,8 +458,9 @@ public class IDPassReader {
         Dictionary serializedPrivateExtra = builder.build();
 
         if (certificates != null) {
-            for (byte[] certificate : certificates) {
-                add_certificate(ctx, certificate);
+            // tip will sign
+            if (!add_certificates(ctx, certificates)) {
+                System.out.println("invalid chain");
             }
         }
 
@@ -530,12 +531,9 @@ public class IDPassReader {
     public static byte[] generateRootCertificate(byte[] secretKey)
     {
         // byte layout:
-        // - secretKey .......... 64
+        // - pub/priv key ....... 64
         // - signature .......... 64
-
-        //TODO call the Cpp to create it.
-        //return the certificate
-        //return new byte[128];
+        // - issuerkey .......... 32
         byte[] key = generate_root_certificate(secretKey);
         return key;
     }
@@ -543,14 +541,9 @@ public class IDPassReader {
     public static byte[] generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
     {
         // byte layout:
-        // - pubkey (childSecretKey[32:64]) ............. 32
-        // - issuer_pubkey (parentSecretKey[32:64]) ..... 32
+        // - pub/priv key (from childSecretKey) ......... 64
         // - signature(pubkey, parentSecretKey) ......... 64
-
-        //TODO call the Cpp to create it.
-        //return the certificate
-        //return new byte[128];
-
+        // - issuerkey (parentSecretKey[32:64]) ......... 32
         byte[] key = generate_child_certificate(parentSecretKey, childSecretKey);
         return key;
     }

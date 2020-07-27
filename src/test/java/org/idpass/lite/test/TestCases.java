@@ -74,17 +74,41 @@ public class TestCases {
     {
         byte[] signer1 = IDPassReader.generateSecretSignatureKey();
         byte[] signer2 = IDPassReader.generateSecretSignatureKey();
-        byte[] rootCert = IDPassReader.generateRootCertificate(signer1);
+        byte[] signer3 = IDPassReader.generateSecretSignatureKey();
+        byte[] signer4 = IDPassReader.generateSecretSignatureKey();
+
+        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
+
+        byte[][] vkeys = {
+            verificationkey
+        };
+
+        byte[] rootCert0 = IDPassReader.generateRootCertificate(signer0);
+        byte[] rootCert1 = IDPassReader.generateRootCertificate(signer1);
+
         byte[] childCert = IDPassReader.generateChildCertificate(signer1, signer2);
+        byte[] childCert2 = IDPassReader.generateChildCertificate(signer2, signer3);
 
-        byte[][] certificates = new byte[1][];
-        certificates[0] = childCert;
+        byte[] childCert3 = IDPassReader.generateChildCertificate(signer3, signer4);
+        byte[] childCert4 = IDPassReader.generateChildCertificate(signer0, signer4);
 
-        byte[][] vkeys = new byte[1][];
-        vkeys[0] = verificationkey;
+        byte[][] rootcertificates = {
+            rootCert0,
+            rootCert1
+        };
 
-        IDPassReader reader = new IDPassReader(encryptionkey, signaturekey, vkeys, rootCert);
+        IDPassReader reader = new IDPassReader(encryptionkey, signaturekey, vkeys, rootcertificates);
 
+        byte[][] certs = {
+            rootCert0,
+            rootCert1,
+            childCert,
+            childCert2,
+            childCert3,
+            childCert4
+        };
+
+        //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
 
         Card card = reader.newCard(
@@ -95,8 +119,9 @@ public class TestCases {
                 null,
                 null,
                 photo,
-                "1234",certificates);
+                "1234",certs);
 
+        assertTrue(card.verifyCertificate());
         assertNotNull(card);
         assertTrue(card.asBytes().length > 0);
     }

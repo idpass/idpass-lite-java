@@ -25,6 +25,7 @@ import org.idpass.api.proto.IDPassCards;
 import org.idpass.api.proto.Pair;
 import org.idpass.api.proto.PublicSignedIDPassCard;
 import org.idpass.api.proto.SignedIDPassCard;
+import org.idpass.api.proto.Certificate;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
@@ -33,6 +34,7 @@ import org.idpass.lite.exceptions.NotVerifiedException;
 import java.awt.image.BufferedImage;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Date;
 
 /**
  * An abstract representation of an ID PASS Card
@@ -49,6 +51,15 @@ public class Card {
     private HashMap<String, String> cardExtras = new HashMap<String, String>();
 
     /**
+     * ncerts - Count of certificates in the chain
+     * signature - Signature of card's signerPublicKey
+     * certs - List of certificates in a chain
+     */
+    private int ncerts;
+    private byte[] signature;
+    private List<Certificate> certs;
+
+    /**
      * This constructor is used to create a new ID PASS Card.
      * @param idPassReader The reader instance
      * @param surname Person surname
@@ -59,7 +70,7 @@ public class Card {
      * @param privateExtra Arbitrary key/value pairs to reside in teh private region
      * @param photo The photo bytes array
      * @param pin The card owner personal pin code
-     * @param certificates Trusted certificate chain
+     * @param certificates Certificate chain
      * @throws IDPassException ID PASS exception
      */
     protected Card(IDPassReader idPassReader,
@@ -86,11 +97,50 @@ public class Card {
 
         try {
             this.cards = IDPassCards.parseFrom(card);
+            this.ncerts = this.cards.getCertificatesCount();
+            this.signature = this.cards.getSignature().toByteArray();
+            this.certs = this.cards.getCertificatesList();
         } catch (InvalidProtocolBufferException e) {
             throw new InvalidCardException();
         }
         this.cardAsByte = card;
         updateDetails();
+    }
+
+    /**
+     * Verify the signature using certificate chain.
+     *
+     * @return True Returns true if certificate chain
+     * validates and verifies the IDPassCard's signature.
+     */
+
+    public boolean verifyCertificate()
+    {
+        if (this.ncerts > 0) {
+            // verify card certificate
+            if (reader.verifySignature(
+                    this.cards.getPublicCard().getSignerPublicKey().toByteArray(),
+                    this.signature,
+                    certs.get(0).getPubkey().toByteArray())) {
+
+                // verify chain
+                for (Certificate c : this.certs) {
+                    byte[] pubkey = c.getPubkey().toByteArray();
+                    byte[] signature = c.getSignature().toByteArray();
+                    byte[] issuer = c.getIssuerkey().toByteArray();
+                    if (!reader.verifySignature(pubkey, signature, issuer)) {
+                        return false;
+                    }
+                }
+
+                return true;
+
+            } else {
+                return false;
+            }
+        }
+
+        return false;
     }
 
     /**
