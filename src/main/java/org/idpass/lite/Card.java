@@ -114,12 +114,12 @@ public class Card {
      * validates and verifies the IDPassCard's signature.
      */
 
-    public boolean verifyCertificate()
+    public boolean verifyCertificate() throws InvalidCardException, NotVerifiedException
     {
         if (this.ncerts > 0) {
             // verify card certificate
             if (reader.verifySignature(
-                    this.cards.getPublicCard().getSignerPublicKey().toByteArray(),
+                    getPublicKey(),
                     this.signature,
                     certs.get(0).getPubkey().toByteArray())) {
 
@@ -168,6 +168,9 @@ public class Card {
      * @throws IDPassException custom exception
      */
     private void verifyPublicCardSignature(PublicSignedIDPassCard publicCard) throws IDPassException {
+        if (!publicCard.hasDetails()) {
+            return;
+        }
         byte[] blob = publicCard.getDetails().toByteArray();
         byte[] signerPublicKey = publicCard.getSignerPublicKey().toByteArray();
 

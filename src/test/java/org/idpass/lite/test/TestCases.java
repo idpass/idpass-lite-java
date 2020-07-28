@@ -70,7 +70,7 @@ public class TestCases {
 
     @Test
     public void testcreateCardWithCertificates()
-            throws IOException, IDPassException
+            throws IOException, IDPassException, NotVerifiedException
     {
         byte[] signer0 = IDPassReader.generateSecretSignatureKey();
         byte[] signer1 = IDPassReader.generateSecretSignatureKey();
@@ -86,10 +86,10 @@ public class TestCases {
         byte[] signer0RootCert = IDPassReader.generateRootCertificate(signer0);
         byte[] signer1RootCert = IDPassReader.generateRootCertificate(signer1);
 
-        byte[] signer2From1Cert = IDPassReader.generateChildCertificate(signer1, signer2);
-        byte[] signer3From2Cert = IDPassReader.generateChildCertificate(signer2, signer3);
+        byte[] signer2From1Cert = IDPassReader.generateChildCertificate(signer1, Arrays.copyOfRange(signer2,32,64));
+        byte[] signer3From2Cert = IDPassReader.generateChildCertificate(signer2, Arrays.copyOfRange(signer3,32,64));
 
-        byte[] signer4From3Cert = IDPassReader.generateChildCertificate(signer3, signer4);
+        byte[] signer4From3Cert = IDPassReader.generateChildCertificate(signer3, Arrays.copyOfRange(signer4,32,64));
         byte[] signer4From0Cert = IDPassReader.generateChildCertificate(signer0, signer4);
 
         byte[][] rootcertificates = {
@@ -121,9 +121,11 @@ public class TestCases {
                 photo,
                 "1234",certs);
 
+        card.authenticateWithPIN("1234");
         assertTrue(card.verifyCertificate());
         assertNotNull(card);
         assertTrue(card.asBytes().length > 0);
+        reader.open(card.asBytes());
     }
 
     @Test
