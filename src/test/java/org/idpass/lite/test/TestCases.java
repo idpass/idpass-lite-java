@@ -72,40 +72,40 @@ public class TestCases {
     public void testcreateCardWithCertificates()
             throws IOException, IDPassException
     {
+        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
         byte[] signer1 = IDPassReader.generateSecretSignatureKey();
         byte[] signer2 = IDPassReader.generateSecretSignatureKey();
         byte[] signer3 = IDPassReader.generateSecretSignatureKey();
         byte[] signer4 = IDPassReader.generateSecretSignatureKey();
 
-        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
 
         byte[][] vkeys = {
             verificationkey
         };
 
-        byte[] rootCert0 = IDPassReader.generateRootCertificate(signer0);
-        byte[] rootCert1 = IDPassReader.generateRootCertificate(signer1);
+        byte[] signer0RootCert = IDPassReader.generateRootCertificate(signer0);
+        byte[] signer1RootCert = IDPassReader.generateRootCertificate(signer1);
 
-        byte[] childCert = IDPassReader.generateChildCertificate(signer1, signer2);
-        byte[] childCert2 = IDPassReader.generateChildCertificate(signer2, signer3);
+        byte[] signer2From1Cert = IDPassReader.generateChildCertificate(signer1, signer2);
+        byte[] signer3From2Cert = IDPassReader.generateChildCertificate(signer2, signer3);
 
-        byte[] childCert3 = IDPassReader.generateChildCertificate(signer3, signer4);
-        byte[] childCert4 = IDPassReader.generateChildCertificate(signer0, signer4);
+        byte[] signer4From3Cert = IDPassReader.generateChildCertificate(signer3, signer4);
+        byte[] signer4From0Cert = IDPassReader.generateChildCertificate(signer0, signer4);
 
         byte[][] rootcertificates = {
-            rootCert0,
-            rootCert1
+            signer0RootCert,
+            signer1RootCert
         };
 
         IDPassReader reader = new IDPassReader(encryptionkey, signaturekey, vkeys, rootcertificates);
 
         byte[][] certs = {
-            rootCert0,
-            rootCert1,
-            childCert,
-            childCert2,
-            childCert3,
-            childCert4
+            signer0RootCert,
+            signer1RootCert,
+            signer2From1Cert,
+            signer3From2Cert,
+            signer4From3Cert,
+            signer4From0Cert
         };
 
         //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
