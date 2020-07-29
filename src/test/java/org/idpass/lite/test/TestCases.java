@@ -68,6 +68,61 @@ public class TestCases {
         return card;
     }
 
+
+    @Test
+    public void testcreateCard2WithCertificates()
+            throws IOException, IDPassException, NotVerifiedException {
+        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
+        byte[] signer4 = IDPassReader.generateSecretSignatureKey();
+
+        byte[][] vkeys = {
+                verificationkey
+        };
+
+        byte[] signer0RootCert = IDPassReader.generateRootCertificate(signer0);
+        byte[] signer4From0Cert = IDPassReader.generateChildCertificate(signer0, signer4);
+
+        byte[][] rootcertificates = {
+                signer0RootCert
+        };
+
+        IDPassReader reader = new IDPassReader(encryptionkey, signaturekey, vkeys, rootcertificates);
+
+        byte[][] certs = {
+                signer4From0Cert
+        };
+
+        //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+
+        Card card = reader.newCard(
+                "John",
+                "Doe",
+                new Date(),
+                "Aubusson, France",
+                null,
+                null,
+                photo,
+                "1234",certs);
+
+        card.authenticateWithPIN("1234");
+        assertTrue(card.verifyCertificate());
+
+
+        byte[] signer1 = IDPassReader.generateSecretSignatureKey();
+        byte[] signer1RootCert = IDPassReader.generateRootCertificate(signer1);
+
+        byte[][] rootcertificates2 = {
+                signer1RootCert
+        };
+
+        IDPassReader reader2 = new IDPassReader(encryptionkey, null, vkeys, rootcertificates2);
+        Card card2 = reader2.open(card.asBytes());
+        card2.authenticateWithPIN(("1234"));
+        assertFalse(card2.verifyCertificate());
+
+    }
+
     @Test
     public void testcreateCardWithCertificates()
             throws IOException, IDPassException, NotVerifiedException
@@ -131,6 +186,17 @@ public class TestCases {
         Card card2 = reader2.open(card.asBytes());
         card2.authenticateWithPIN(("1234"));
         assertTrue(card2.verifyCertificate());
+
+        card2 = reader2.open(card.asBytes());
+        assertTrue(card2.verifyCertificate());
+
+        byte[][] rootcertificates2 = {
+        };
+
+        IDPassReader reader3 = new IDPassReader(encryptionkey, signaturekey, null, rootcertificates2);
+        card2 = reader3.open(card.asBytes());
+        card2.authenticateWithPIN(("1234"));
+        assertFalse(card2.verifyCertificate());
     }
 
     @Test
