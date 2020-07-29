@@ -154,6 +154,9 @@ public class Card {
 
         try {
             this.cards = IDPassCards.parseFrom(card);
+            this.ncerts = this.cards.getCertificatesCount();
+            this.signature = this.cards.getSignature().toByteArray();
+            this.certs = this.cards.getCertificatesList();
         } catch (InvalidProtocolBufferException e) {
             throw new InvalidCardException();
         }

@@ -126,6 +126,11 @@ public class TestCases {
         assertNotNull(card);
         assertTrue(card.asBytes().length > 0);
         reader.open(card.asBytes());
+
+        IDPassReader reader2 = new IDPassReader(encryptionkey, signaturekey, null, rootcertificates);
+        Card card2 = reader2.open(card.asBytes());
+        card2.authenticateWithPIN(("1234"));
+        assertTrue(card2.verifyCertificate());
     }
 
     @Test
