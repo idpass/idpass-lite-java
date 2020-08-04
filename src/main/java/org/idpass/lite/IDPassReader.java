@@ -116,10 +116,7 @@ public class IDPassReader {
 
     /**
      * Instantiates an instance of the library with additional verification keys
-     * @param encryptionKey is used to encrypt/decrypt the private content of a card
-     * @param signatureKey is used to sign a created card
-     * @param verificationKeys is a list of trusted public keys
-     * @param rootCertificates is a list of root certificates
+     * @param ks The cryptographic key settings
      * @throws IDPassException ID PASS exception
      */
     public IDPassReader(KeySet ks, Certificats rc)
@@ -176,14 +173,7 @@ public class IDPassReader {
 
     /**
      * Create a new ID PASS Card.
-     * @param surname Person surname
-     * @param givenName Person given name
-     * @param dateOfBirth birthday ie, 1978/12/17
-     * @param placeOfBirth Place of birth
-     * @param publicExtra Arbitrary key/value pairs to reside in the public region
-     * @param privateExtra Arbitrary key/value pairs to reside in teh private region
-     * @param photo The photo bytes array
-     * @param pin The card owner personal pin code
+     * @param ident The person identity details
      * @param certificates Certificate chain
      * @throws IDPassException ID PASS exception
      * @return Returns Card object
@@ -376,14 +366,7 @@ public class IDPassReader {
     /**
      * This is used to issue a new QR code card with the details
      * passed in the parameters.
-     * @param surname Person's surname
-     * @param givenName Person's givenName
-     * @param dateOfBirth Person's date of birth (eg, 1980/12/17)
-     * @param placeOfBirth Place
-     * @param publicExtra Arbitrary key/value pairs to reside  in the public region
-     * @param privateExtra Arbitrary key/value pairs to reside in the private region
-     * @param photo The face of the person to be issued. This shall be used as an access condition to open the card.
-     * @param pin  A personal pin code the person chooses. This is an alternative access condition to open the card.
+     * @param ident The person's identity details
      * @param certificates Certificate chain
      * @return The card content including the public and private parts
      * @throws IDPassException ID PASS exception

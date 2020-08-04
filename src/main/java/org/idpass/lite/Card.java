@@ -66,14 +66,7 @@ public class Card {
     /**
      * This constructor is used to create a new ID PASS Card.
      * @param idPassReader The reader instance
-     * @param surname Person surname
-     * @param givenName Person given name
-     * @param dateOfBirth birthday ie, 1978/12/17
-     * @param placeOfBirth Place of birth
-     * @param publicExtra Arbitrary key/value pairs to reside in the public region
-     * @param privateExtra Arbitrary key/value pairs to reside in teh private region
-     * @param photo The photo bytes array
-     * @param pin The card owner personal pin code
+     * @param ident The person details
      * @param certificates Certificate chain
      * @throws IDPassException ID PASS exception
      */
