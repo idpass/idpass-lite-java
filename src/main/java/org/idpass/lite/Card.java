@@ -19,19 +19,23 @@
 package org.idpass.lite;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.idpass.api.proto.CardDetails;
-import org.idpass.api.proto.IDPassCard;
-import org.idpass.api.proto.IDPassCards;
-import org.idpass.api.proto.Pair;
-import org.idpass.api.proto.PublicSignedIDPassCard;
-import org.idpass.api.proto.SignedIDPassCard;
-import org.idpass.api.proto.Certificate;
+import org.api.proto.Certificats;
+import org.api.proto.Ident;
+import org.api.proto.byteArray;
+import org.idpass.lite.proto.CardDetails;
+import org.idpass.lite.proto.IDPassCard;
+import org.idpass.lite.proto.IDPassCards;
+import org.idpass.lite.proto.Pair;
+import org.idpass.lite.proto.PublicSignedIDPassCard;
+import org.idpass.lite.proto.SignedIDPassCard;
+import org.idpass.lite.proto.Certificate;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
 
 import java.awt.image.BufferedImage;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Date;
@@ -73,27 +77,10 @@ public class Card {
      * @param certificates Certificate chain
      * @throws IDPassException ID PASS exception
      */
-    protected Card(IDPassReader idPassReader,
-                String surname,
-                String givenName,
-                Date dateOfBirth,
-                String placeOfBirth,
-                HashMap<String, String> publicExtra,
-                HashMap<String, String> privateExtra,
-                byte[] photo,
-                String pin,
-                byte[][] certificates) throws IDPassException {
+    protected Card(IDPassReader idPassReader, Ident ident,
+                Certificats certificates) throws IDPassException {
         this.reader = idPassReader;
-        byte[] card = this.reader.createNewCard(
-                surname,
-                givenName,
-                new SimpleDateFormat("yyyy/MM/dd").format(dateOfBirth),
-                placeOfBirth,
-                publicExtra,
-                privateExtra,
-                photo,
-                pin,
-                certificates);
+        byte[] card = this.reader.createNewCard(ident, certificates);
 
         try {
             this.cards = IDPassCards.parseFrom(card);
@@ -114,33 +101,12 @@ public class Card {
      * validates and verifies the IDPassCard's signature.
      */
 
-    public boolean verifyCertificate() throws InvalidCardException, NotVerifiedException
+    public boolean verifyCertificate()
+            throws InvalidProtocolBufferException
     {
-        if (this.ncerts > 0) {
-            // verify card certificate
-            if (reader.verifySignature(
-                    getPublicKey(),
-                    this.signature,
-                    certs.get(0).getPubkey().toByteArray())) {
-
-                // verify chain
-                for (Certificate c : this.certs) {
-                    byte[] pubkey = c.getPubkey().toByteArray();
-                    byte[] signature = c.getSignature().toByteArray();
-                    byte[] issuer = c.getIssuerkey().toByteArray();
-                    if (!reader.verifySignature(pubkey, signature, issuer)) {
-                        return false;
-                    }
-                }
-
-                return true;
-
-            } else {
-                return false;
-            }
-        }
-
-        return false;
+        IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
+        int nCerts = reader.verifyCardCertificate(fullcard);
+        return (nCerts == -1) ? false : true;
     }
 
     /**
@@ -149,7 +115,9 @@ public class Card {
      * @param card The QR code content byte array
      * @throws IDPassException custom exception
      */
-    public Card(IDPassReader idPassReader, byte[] card) throws IDPassException {
+    public Card(IDPassReader idPassReader, byte[] card)
+            throws IDPassException, InvalidProtocolBufferException
+    {
         this.reader = idPassReader;
 
         try {
@@ -160,8 +128,10 @@ public class Card {
         } catch (InvalidProtocolBufferException e) {
             throw new InvalidCardException();
         }
-        verifyPublicCardSignature(this.cards.getPublicCard());
+
         this.cardAsByte = card;
+
+        verifyPublicCardSignature(this.cards.getPublicCard());
         updateDetails();
     }
 
@@ -170,25 +140,31 @@ public class Card {
      * @param publicCard The public region of the QR code ID
      * @throws IDPassException custom exception
      */
-    private void verifyPublicCardSignature(PublicSignedIDPassCard publicCard) throws IDPassException {
+    private void verifyPublicCardSignature(PublicSignedIDPassCard publicCard)
+            throws IDPassException, InvalidProtocolBufferException
+    {
         if (!publicCard.hasDetails()) {
             return;
         }
-        byte[] blob = publicCard.getDetails().toByteArray();
-        byte[] signerPublicKey = publicCard.getSignerPublicKey().toByteArray();
+        IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
+        byte[] decrypted = this.reader.cardDecrypt(fullcard.getEncryptedCard().toByteArray());
+        ByteBuffer blob = ByteBuffer.allocate(publicCard.getSerializedSize() + decrypted.length);
+        blob.put(decrypted);
+        blob.put(publicCard.toByteArray());
+        byte[] signerPublicKey = fullcard.getSignerPublicKey().toByteArray();
 
-        byte[][] allowedKeys = IDPassHelper.divideArray(this.reader.verificationKeys, 32);
         boolean found = false;
-        for (byte[]key: allowedKeys) {
-            if (Arrays.equals(key, signerPublicKey)) {
+        for (byteArray key : this.reader.m_keyset.getVerkeysList()) {
+            if (Arrays.equals(signerPublicKey, key.getVal().toByteArray())) {
                 found = true;
                 break;
             }
         }
+
         if(!found) {
             throw new IDPassException("Unknown Signer key: " + Arrays.toString(signerPublicKey));
         }
-        boolean flag = this.reader.verifySignature(blob, publicCard.getSignature().toByteArray(), signerPublicKey);
+        boolean flag = this.reader.verifySignature(blob.array(), fullcard.getSignature().toByteArray(), signerPublicKey);
         if (!flag) {
             throw new IDPassException("Signature does not match");
         }
@@ -211,8 +187,7 @@ public class Card {
      * @throws InvalidCardException custom exception
      */
     public void authenticateWithFace(byte[] photo) throws CardVerificationException, InvalidCardException {
-        byte[] ecard = cards.getEncryptedCard().toByteArray();
-        byte[] buf = this.reader.verifyCardWithFace(photo, ecard);
+        byte[] buf = this.reader.verifyCardWithFace(photo, cardAsByte);
 
         verifyAuth(buf);
     }
@@ -224,10 +199,10 @@ public class Card {
      * @throws CardVerificationException custom exception
      * @throws InvalidCardException custom exception
      */
-    public void authenticateWithPIN(String pin) throws CardVerificationException, InvalidCardException {
-        byte[] ecard = cards.getEncryptedCard().toByteArray();
-        byte[] buf = this.reader.verifyCardWithPin(pin, ecard);
-
+    public void authenticateWithPIN(String pin)
+            throws CardVerificationException, InvalidCardException, InvalidProtocolBufferException
+    {
+        byte[] buf = this.reader.verifyCardWithPin(pin, cardAsByte);
         verifyAuth(buf);
     }
 
@@ -388,7 +363,7 @@ public class Card {
      * @param pbDate A protobuf defined Date
      * @return Returns back a standard Java Date
      */
-    private Date convertDate(org.idpass.api.proto.Date pbDate) {
+    private Date convertDate(org.idpass.lite.proto.Date pbDate) {
         return new GregorianCalendar(pbDate.getYear(), pbDate.getMonth() - 1, pbDate.getDay()).getTime();
     }
 
