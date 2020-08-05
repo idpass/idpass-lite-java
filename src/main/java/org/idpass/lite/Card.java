@@ -19,7 +19,7 @@
 package org.idpass.lite;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.api.proto.Certificats;
+import org.api.proto.Certificates;
 import org.api.proto.Ident;
 import org.api.proto.byteArray;
 import org.idpass.lite.proto.CardDetails;
@@ -71,7 +71,7 @@ public class Card {
      * @throws IDPassException ID PASS exception
      */
     protected Card(IDPassReader idPassReader, Ident ident,
-                Certificats certificates) throws IDPassException {
+                Certificates certificates) throws IDPassException {
         this.reader = idPassReader;
         byte[] card = this.reader.createNewCard(ident, certificates);
 
@@ -147,7 +147,7 @@ public class Card {
         byte[] signerPublicKey = fullcard.getSignerPublicKey().toByteArray();
 
         boolean found = false;
-        for (byteArray key : this.reader.m_keyset.getVerkeysList()) {
+        for (byteArray key : this.reader.m_keyset.getVerificationKeysList()) {
             if (Arrays.equals(signerPublicKey, key.getVal().toByteArray())) {
                 found = true;
                 break;
@@ -155,7 +155,11 @@ public class Card {
         }
 
         if(!found) {
-            throw new IDPassException("Unknown Signer key: " + Arrays.toString(signerPublicKey));
+            boolean flag2 = this.reader.verifySignature(blob.array(), fullcard.getSignature().toByteArray(), signerPublicKey);
+            if (!flag2) {
+                throw new IDPassException("Signature does not match");
+            }
+            return;
         }
         boolean flag = this.reader.verifySignature(blob.array(), fullcard.getSignature().toByteArray(), signerPublicKey);
         if (!flag) {

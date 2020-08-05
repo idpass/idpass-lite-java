@@ -120,7 +120,7 @@ public class IDPassReader {
      * @param ks The cryptographic key settings
      * @throws IDPassException ID PASS exception
      */
-    public IDPassReader(KeySet ks, Certificats rc)
+    public IDPassReader(KeySet ks, Certificates rc)
             throws IDPassException {
 
         m_keyset = ks;
@@ -196,7 +196,7 @@ public class IDPassReader {
      * @throws IDPassException ID PASS exception
      * @return Returns Card object
      */
-    public Card newCard(Ident ident, Certificats certificates)
+    public Card newCard(Ident ident, Certificates certificates)
             throws IDPassException
     {
         return new Card(this, ident, certificates);
@@ -362,7 +362,7 @@ public class IDPassReader {
      */
     protected byte[] cardDecrypt(byte[] ecard)
     {
-        return card_decrypt(ctx, ecard, m_keyset.getEnckey().toByteArray());
+        return card_decrypt(ctx, ecard, m_keyset.getEncryptionKey().toByteArray());
     }
 
     /**
@@ -389,7 +389,7 @@ public class IDPassReader {
      * @return The card content including the public and private parts
      * @throws IDPassException ID PASS exception
      */
-    protected byte[] createNewCard(Ident ident, Certificats certificates)
+    protected byte[] createNewCard(Ident ident, Certificates certificates)
             throws IDPassException
     {
         if (certificates != null) {
@@ -454,19 +454,19 @@ public class IDPassReader {
         return generate_secret_signature_key();
     }
 
-    public static Certificat generateRootCertificate(byte[] secretKey)
+    public static Certificate generateRootCertificate(byte[] secretKey)
             throws InvalidProtocolBufferException
     {
-        Certificat c = Certificat.parseFrom(generate_root_certificate(secretKey));
-        Certificat cc = c.toBuilder().setDesc("ROOTCERT").build();
+        Certificate c = Certificate.parseFrom(generate_root_certificate(secretKey));
+        Certificate cc = c.toBuilder().setDesc("ROOTCERT").build();
         return cc;
     }
 
-    public static Certificat generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
+    public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
             throws InvalidProtocolBufferException
     {
-        Certificat c = Certificat.parseFrom(generate_child_certificate(parentSecretKey, childSecretKey));
-        Certificat cc = c.toBuilder().setDesc("CHILDCERT").build();
+        Certificate c = Certificate.parseFrom(generate_child_certificate(parentSecretKey, childSecretKey));
+        Certificate cc = c.toBuilder().setDesc("CHILDCERT").build();
         return cc;
     }
 
