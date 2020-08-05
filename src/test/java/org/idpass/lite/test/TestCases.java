@@ -327,9 +327,9 @@ public class TestCases {
         } catch (CardVerificationException e) {
             assertTrue(false);
         }
-        assertNotEquals(0, card.getGivenName().length());
-        assertNotEquals(0, card.getSurname().length());
-        assertNotEquals(0, card.getPlaceOfBirth().length());
+        assertEquals("John", card.getGivenName());
+        assertEquals("Doe", card.getSurname());
+        assertEquals("Aubusson, France", card.getPlaceOfBirth());
         assertNotNull(card.getDateOfBirth());
     }
 
@@ -343,10 +343,10 @@ public class TestCases {
 
         Card card = newTestCard(reader);
 
-        assertNotEquals(0, card.getGivenName().length());
+        assertEquals("John", card.getGivenName());
         assertEquals(0, card.getSurname().length());
         assertNull(card.getDateOfBirth());
-        assertNotEquals(0, card.getPlaceOfBirth().length());
+        assertEquals("Aubusson, France", card.getPlaceOfBirth());
 
 
         try {
@@ -354,10 +354,12 @@ public class TestCases {
         } catch (CardVerificationException e) {
             assertTrue(false);
         }
-        assertNotNull(card.getGivenName());
-        assertNotNull(card.getSurname());
-        assertNotNull(card.getPlaceOfBirth());
-        assertNotNull(card.getDateOfBirth());
+        assertEquals("John", card.getGivenName());
+        assertEquals("Doe", card.getSurname());
+        assertEquals("Aubusson, France", card.getPlaceOfBirth());
+        assertEquals(17, card.getDateOfBirth().getDate());
+        assertEquals(12, card.getDateOfBirth().getMonth() + 1);
+        assertEquals(1980, card.getDateOfBirth().getYear() + 1900);
     }
 
     @Test
