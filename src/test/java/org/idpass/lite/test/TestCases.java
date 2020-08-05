@@ -26,6 +26,7 @@ import org.idpass.lite.Card;
 import org.idpass.lite.IDPassReader;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
+import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -37,8 +38,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
@@ -85,19 +84,22 @@ public class TestCases {
         byte[] signer4 = IDPassReader.generateSecretSignatureKey();
 
         Certificat signer0RootCert = IDPassReader.generateRootCertificate(signer0);
-        Certificat signer4From0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
+        Certificat signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
 
         Certificats rootcertificates  = Certificats.newBuilder().addCert(signer0RootCert).build();
 
         IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
-        Certificats certs = Certificats.newBuilder().addCert(signer4From0Cert).build();
+        Certificats certs = Certificats.newBuilder().addCert(signerFromSigner0Cert).build();
 
         //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
         Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
 
-        Card card = reader.newCard(ident ,certs);
+        Card card = reader.newCard(ident, certs);
         Card cardOK = reader.open(card.asBytes());
+        assertNotNull(cardOK);
+
+        assertTrue(card.verifyCertificate());
 
         card.authenticateWithPIN("1234");
         assertTrue(card.verifyCertificate());
@@ -105,10 +107,16 @@ public class TestCases {
         byte[] signer1 = IDPassReader.generateSecretSignatureKey();
         Certificat signer1RootCert = IDPassReader.generateRootCertificate(signer1);
 
-        Certificats rootcertificates2 = Certificats.newBuilder().addCert(signer1RootCert).build();
+        Certificats rootCertificates1 = Certificats.newBuilder().addCert(signer1RootCert).build();
 
-        IDPassReader reader2 = new IDPassReader(m_keyset, rootcertificates2);
-        Card card2 = reader2.open(card.asBytes());
+        IDPassReader reader2 = new IDPassReader(m_keyset, rootCertificates1);
+
+        try {
+            reader2.open(card.asBytes());
+            assertTrue(false);
+        } catch (InvalidCardException ignored) {}
+
+        Card card2 = reader2.open(card.asBytes(), true);
         assertFalse(card2.verifyCertificate());
         try {
             card2.authenticateWithPIN("1234");
@@ -184,7 +192,13 @@ public class TestCases {
                 .build();
 
         IDPassReader reader3 = new IDPassReader(m_keyset, rootcertificates2);
-        card2 = reader3.open(card.asBytes());
+
+        try {
+            reader3.open(card.asBytes());
+            assertTrue(false);
+        } catch (InvalidCardException ignored) {}
+
+        card2 = reader3.open(card.asBytes(), true);
         assertFalse(card2.verifyCertificate());
         try {
             card2.authenticateWithPIN(("1234"));

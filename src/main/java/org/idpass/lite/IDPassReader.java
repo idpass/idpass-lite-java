@@ -29,6 +29,7 @@ import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
 import org.api.proto.*;
 import org.idpass.lite.exceptions.IDPassException;
+import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.proto.IDPassCards;
 
 import java.awt.Color;
@@ -140,8 +141,25 @@ public class IDPassReader {
     public Card open(byte[] card)
             throws IDPassException, InvalidProtocolBufferException
     {
-        return new Card(this, card);
+        return open(card, false);
     }
+
+    /**
+     * Parse the content of a card
+     * @param card The binary content of a card
+     * @return Wrapper of the card
+     * @throws IDPassException ID PASS exception
+     */
+    public Card open(byte[] bCard, boolean skipCertificateVerification)
+            throws IDPassException, InvalidProtocolBufferException
+    {
+        Card card = new Card(this, bCard);
+        if(!skipCertificateVerification && !card.verifyCertificate()) {
+            throw new InvalidCardException("Certificate could not be verified");
+        }
+        return card;
+    }
+
 
     /**
      * Read a QR code image and parse the content of a card
