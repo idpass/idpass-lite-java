@@ -19,6 +19,7 @@
 package org.idpass.lite.test;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.zxing.NotFoundException;
 import org.api.proto.*;
 import org.idpass.lite.IDPassHelper;
@@ -79,9 +80,8 @@ public class TestCases {
 
     @Test
     public void testcreateCard2WithCertificates()
-            throws IOException, IDPassException, NotVerifiedException {
+            throws IOException, IDPassException {
         byte[] signer0 = IDPassReader.generateSecretSignatureKey();
-        byte[] signer4 = IDPassReader.generateSecretSignatureKey();
 
         Certificat signer0RootCert = IDPassReader.generateRootCertificate(signer0);
         Certificat signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
@@ -120,12 +120,83 @@ public class TestCases {
         assertFalse(card2.verifyCertificate());
         try {
             card2.authenticateWithPIN("1234");
-            assertFalse(true);
+            assertTrue(false);
         } catch (Exception e) {
             // because the card's certificate chain
             // could not find needed root certificate
         }
     }
+
+    @Test
+    public void testOpenCardWithNoVerificationKey() throws IOException, IDPassException {
+        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
+
+        Certificat signer0RootCert = IDPassReader.generateRootCertificate(signer0);
+        Certificat signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
+
+        Certificats rootcertificates  = Certificats.newBuilder().addCert(signer0RootCert).build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
+
+
+        Certificats certs = Certificats.newBuilder().addCert(signerFromSigner0Cert).build();
+
+        Card card = reader.newCard(ident, certs);
+        Card cardOK = reader.open(card.asBytes());
+        assertNotNull(cardOK);
+
+
+        byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
+
+        KeySet keyset = KeySet.newBuilder()
+                .setEnckey(ByteString.copyFrom(encryptionkey))
+                .setSigkey(ByteString.copyFrom(newSignatureKey))
+                .build();
+        IDPassReader reader2 = new IDPassReader(keyset, rootcertificates);
+        Card card2 = reader2.open(card.asBytes());
+        assertNotNull(card2);
+    }
+
+    @Test
+    public void testOpenCardWithUnkownVerificationKey() throws IOException, IDPassException {
+        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
+
+        Certificat signer0RootCert = IDPassReader.generateRootCertificate(signer0);
+        Certificat signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
+
+        Certificats rootcertificates = Certificats.newBuilder().addCert(signer0RootCert).build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
+
+
+        Certificats certs = Certificats.newBuilder().addCert(signerFromSigner0Cert).build();
+
+        Card card = reader.newCard(ident, certs);
+        Card cardOK = reader.open(card.asBytes());
+        assertNotNull(cardOK);
+
+        byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
+        byte[] newVerificationKey = Arrays.copyOfRange(newSignatureKey, 32, 64);
+
+        KeySet keyset2 = KeySet.newBuilder()
+                .setEnckey(ByteString.copyFrom(encryptionkey))
+                .setSigkey(ByteString.copyFrom(signaturekey))
+                .addVerkeys(byteArray.newBuilder()
+                        .setTyp(byteArray.Typ.ED25519PUBKEY)
+                        .setVal(ByteString.copyFrom(newVerificationKey)).build())
+                .build();
+
+        IDPassReader reader2 = new IDPassReader(keyset2, rootcertificates);
+        Card card2 = reader2.open(card.asBytes());
+        assertNotNull(card2);
+    }
+
 
     @Test
     public void testcreateCardWithCertificates()
@@ -202,7 +273,7 @@ public class TestCases {
         assertFalse(card2.verifyCertificate());
         try {
             card2.authenticateWithPIN(("1234"));
-            assertFalse(true); // should never go here
+            assertTrue(false);
         } catch (CardVerificationException e) {
             // should go here, because root certificates of reader3
             // cannot anchor the certificate chain in the  QR code ID

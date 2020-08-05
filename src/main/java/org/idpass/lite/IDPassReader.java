@@ -146,7 +146,7 @@ public class IDPassReader {
 
     /**
      * Parse the content of a card
-     * @param card The binary content of a card
+     * @param bCard The binary content of a card
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
      */
