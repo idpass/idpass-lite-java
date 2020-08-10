@@ -90,6 +90,7 @@ public class Card {
     /**
      * Verify the signature using certificate chain.
      *
+     * @throws InvalidProtocolBufferException Protobuf exception
      * @return True Returns true if certificate chain
      * validates and verifies the IDPassCard's signature.
      */
@@ -107,6 +108,7 @@ public class Card {
      * @param idPassReader The reader instance
      * @param card The QR code content byte array
      * @throws IDPassException custom exception
+     * @throws InvalidProtocolBufferException Protobuf exception
      */
     public Card(IDPassReader idPassReader, byte[] card)
             throws IDPassException, InvalidProtocolBufferException
@@ -197,7 +199,7 @@ public class Card {
      * @throws InvalidCardException custom exception
      */
     public void authenticateWithPIN(String pin)
-            throws CardVerificationException, InvalidCardException, InvalidProtocolBufferException
+            throws CardVerificationException, InvalidCardException
     {
         byte[] buf = this.reader.verifyCardWithPin(pin, cardAsByte);
         verifyAuth(buf);
@@ -369,7 +371,7 @@ public class Card {
      *
      * @param data The input data to be encrypted
      * @return Returns the encrypted data
-     * @throws NotVerifiedException
+     * @throws NotVerifiedException Custom exception
      */
 
     public byte[] encrypt(byte[] data)
@@ -386,13 +388,12 @@ public class Card {
      *
      * @param data The input data to be decrypted.
      * @return Returns the decrypted data.
-     * @throws InvalidProtocolBufferException
-     * @throws NotVerifiedException
-     * @throws InvalidCardException
+     * @throws NotVerifiedException Custom exception
+     * @throws InvalidCardException Custom exception
      */
 
     public byte[] decrypt(byte[] data)
-            throws InvalidProtocolBufferException, NotVerifiedException, InvalidCardException
+            throws NotVerifiedException, InvalidCardException
     {
         checkIsAuthenticated();
 

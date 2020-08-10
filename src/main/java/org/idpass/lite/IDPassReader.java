@@ -118,6 +118,7 @@ public class IDPassReader {
     /**
      * Instantiates an instance of the library with additional verification keys
      * @param ks The cryptographic key settings
+     * @param rc The root certificates list
      * @throws IDPassException ID PASS exception
      */
     public IDPassReader(KeySet ks, Certificates rc)
@@ -137,6 +138,7 @@ public class IDPassReader {
      * @param card The binary content of a card
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
+     * @throws InvalidProtocolBufferException Protobuf exception
      */
     public Card open(byte[] card)
             throws IDPassException, InvalidProtocolBufferException
@@ -147,8 +149,10 @@ public class IDPassReader {
     /**
      * Parse the content of a card
      * @param bCard The binary content of a card
+     * @param skipCertificateVerification Skip flag for certificate verification
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
+     * @throws InvalidProtocolBufferException Protobuf exception
      */
     public Card open(byte[] bCard, boolean skipCertificateVerification)
             throws IDPassException, InvalidProtocolBufferException
@@ -167,6 +171,7 @@ public class IDPassReader {
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
      * @throws NotFoundException QR Code not Found
+     * @throws InvalidProtocolBufferException Protobuf exception
      */
     public Card open(BufferedImage bufferedImage)
             throws IDPassException, NotFoundException, InvalidProtocolBufferException
