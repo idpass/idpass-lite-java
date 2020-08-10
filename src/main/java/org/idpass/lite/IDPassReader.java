@@ -470,4 +470,16 @@ public class IDPassReader {
         return cc;
     }
 
+    public byte[] encrypt(byte[] data, byte[] fullcard)
+    {
+        byte[] encrypted = encrypt_with_card(ctx, fullcard, data);
+        return encrypted;
+    }
+
+
+    public byte[] decrypt(byte[] data, byte[] skpk)
+    {
+        byte[] decrypted = decrypt_with_card(ctx, data, skpk);
+        return decrypted;
+    }
 }

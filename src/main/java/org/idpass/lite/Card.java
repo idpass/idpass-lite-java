@@ -364,4 +364,49 @@ public class Card {
         return new GregorianCalendar(pbDate.getYear(), pbDate.getMonth() - 1, pbDate.getDay()).getTime();
     }
 
+    /**
+     * Encrypts input data using card's unique ed25519 public key
+     *
+     * @param data The input data to be encrypted
+     * @return Returns the encrypted data
+     * @throws NotVerifiedException
+     */
+
+    public byte[] encrypt(byte[] data)
+            throws NotVerifiedException
+    {
+        checkIsAuthenticated();
+
+        byte[] encrypted = reader.encrypt(data, cardAsByte);
+        return encrypted;
+    }
+
+    /**
+     * Decrypts the input data using card's unique ed25519 private key
+     *
+     * @param data The input data to be decrypted.
+     * @return Returns the decrypted data.
+     * @throws InvalidProtocolBufferException
+     * @throws NotVerifiedException
+     * @throws InvalidCardException
+     */
+
+    public byte[] decrypt(byte[] data)
+            throws InvalidProtocolBufferException, NotVerifiedException, InvalidCardException
+    {
+        checkIsAuthenticated();
+
+        byte[] ecard = cards.getEncryptedCard().toByteArray();
+        byte[] decrypted = this.reader.cardDecrypt(ecard);
+        try {
+            IDPassCard card = SignedIDPassCard.parseFrom(decrypted).getCard();
+            byte[] card_skpk = card.getEncryptionKey().toByteArray(); // private key
+
+            byte[] encrypted = reader.decrypt(data, card_skpk);
+            return encrypted;
+
+        } catch (InvalidProtocolBufferException e) {
+            throw new InvalidCardException();
+        }
+    }
 }

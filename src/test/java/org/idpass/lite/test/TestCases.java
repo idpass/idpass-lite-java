@@ -572,4 +572,34 @@ public class TestCases {
         }
 
     }
+
+    @Test
+    public void testCardEncryptDecrypt()
+            throws IDPassException, IOException, NotVerifiedException
+    {
+        IDPassReader reader = new IDPassReader(m_keyset, null);
+        Card card = newTestCard(reader);
+        String msg = "attack at dawn!";
+        byte[] encrypted = new byte[0];
+
+        try {
+            encrypted = card.encrypt(msg.getBytes());
+            assertFalse(true);
+        } catch (NotVerifiedException e) {
+
+        }
+
+        card.authenticateWithPIN("1234");
+
+        try {
+            encrypted = card.encrypt(msg.getBytes());
+            assertTrue(encrypted.length > 1);
+        } catch (NotVerifiedException e) {
+            assertFalse(true);
+        }
+
+        String decrypted = new String(card.decrypt(encrypted));
+        assertEquals(decrypted, msg);
+    }
+
 }
