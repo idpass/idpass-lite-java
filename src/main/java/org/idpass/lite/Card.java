@@ -28,7 +28,6 @@ import org.idpass.lite.proto.IDPassCards;
 import org.idpass.lite.proto.Pair;
 import org.idpass.lite.proto.PublicSignedIDPassCard;
 import org.idpass.lite.proto.SignedIDPassCard;
-import org.idpass.lite.proto.Certificate;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
@@ -55,15 +54,6 @@ public class Card {
     private HashMap<String, String> cardExtras = new HashMap<String, String>();
 
     /**
-     * ncerts - Count of certificates in the chain
-     * signature - Signature of card's signerPublicKey
-     * certs - List of certificates in a chain
-     */
-    private int ncerts;
-    private byte[] signature;
-    private List<Certificate> certs;
-
-    /**
      * This constructor is used to create a new ID PASS Card.
      * @param idPassReader The reader instance
      * @param ident The person details
@@ -77,9 +67,6 @@ public class Card {
 
         try {
             this.cards = IDPassCards.parseFrom(card);
-            this.ncerts = this.cards.getCertificatesCount();
-            this.signature = this.cards.getSignature().toByteArray();
-            this.certs = this.cards.getCertificatesList();
         } catch (InvalidProtocolBufferException e) {
             throw new InvalidCardException();
         }
@@ -117,9 +104,6 @@ public class Card {
 
         try {
             this.cards = IDPassCards.parseFrom(card);
-            this.ncerts = this.cards.getCertificatesCount();
-            this.signature = this.cards.getSignature().toByteArray();
-            this.certs = this.cards.getCertificatesList();
         } catch (InvalidProtocolBufferException e) {
             throw new InvalidCardException();
         }

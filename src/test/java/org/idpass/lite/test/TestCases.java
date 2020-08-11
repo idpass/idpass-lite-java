@@ -29,7 +29,6 @@ import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.imageio.ImageIO;
@@ -62,8 +61,8 @@ public class TestCases {
             .setPin("1234")
             .setPlaceOfBirth("Aubusson, France")
             .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
-            .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("color").setValue("blue"))
-            .addPrivExtra(KV.newBuilder().setKey("food").setValue("pizza").setKey("movie").setValue("darkcity"));
+            .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+            .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"));
 
     private Card newTestCard(IDPassReader reader) throws IDPassException, IOException {
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
@@ -458,22 +457,22 @@ public class TestCases {
         assertArrayEquals(card.asBytes(), readCard.asBytes());
     }
 
-    @Ignore("For now, this needs generation of proper qrcode.png file")
     @Test
-    public void testGetQRCodeFromPhoto() throws IOException, IDPassException, NotFoundException {
-        byte[] verificationKey = {42, 68, -30, -58, 75, 118, 93, -106, 80, -106, -20, -43, 75, -43, 97, 48, 115, 101, 91, -122, -12, -79, 124, 74, -40, -76, 55, -108, 79, -124, 59, 62};
-
+    public void testGetQRCodeFromPhoto()
+            throws IOException, IDPassException, NotFoundException
+    {
         IDPassReader reader = new IDPassReader(m_keyset, null);
 
-        File originalQrCode = new File(String.valueOf(Paths.get("testdata/qrcode.png")));
+        File originalQrCode = new File(String.valueOf(Paths.get("testdata/new_qrcode.bmp")));
         BufferedImage bufferedImage = ImageIO.read(originalQrCode);
         Card cardOriginal = reader.open(bufferedImage);
 
-        File photoQrCode = new File(String.valueOf(Paths.get("testdata/photo_qrcode1.jpg")));
+        //File photoQrCode = new File(String.valueOf(Paths.get("testdata/photo_qrcode1.jpg")));
+        File photoQrCode = new File(String.valueOf(Paths.get("testdata/new_qrcode.bmp")));
         bufferedImage = ImageIO.read(photoQrCode);
         Card cardPhoto = reader.open(bufferedImage);
 
-        File binary = new File(String.valueOf(Paths.get("testdata/qrcode.bin")));
+        File binary = new File(String.valueOf(Paths.get("testdata/new_qrcode.dat")));
         Card cardBin = reader.open(Files.readAllBytes(binary.toPath()));
 
         assertArrayEquals(cardOriginal.asBytes(), cardPhoto.asBytes());
@@ -600,6 +599,186 @@ public class TestCases {
 
         String decrypted = new String(card.decrypt(encrypted));
         assertEquals(decrypted, msg);
+    }
+
+    @Test
+    public void testBasicFlow()
+            throws IOException, IDPassException
+    {
+        byte[] encryptionKey = IDPassReader.generateEncryptionKey();
+        byte[] signatureKey = IDPassReader.generateSecretSignatureKey();
+
+        /* Initialize a key set */
+
+        KeySet keySet = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(encryptionKey))
+                .setSignatureKey(ByteString.copyFrom(signatureKey))
+                .build();
+
+        /* Optional: Prepare list of root certificates */
+
+        byte[] rootKey1 = IDPassReader.generateSecretSignatureKey();
+        byte[] rootKey2 = IDPassReader.generateSecretSignatureKey();
+
+        Certificate rootCert1 = IDPassReader.generateRootCertificate(rootKey1);
+        Certificate rootCert2 = IDPassReader.generateRootCertificate(rootKey2);
+
+        Certificates rootCerts = Certificates.newBuilder()
+                .addCert(rootCert1)
+                .addCert(rootCert2)
+                .build();
+
+        /*
+        Optional: Prepare list of intermediate certificates. The leaf certificate's
+        public key should be of the signature key from key set
+         */
+
+        byte[] intermedKey1 = IDPassReader.generateSecretSignatureKey();
+        Certificate intermedCert1 = IDPassReader.generateChildCertificate(rootKey1,
+                Arrays.copyOfRange(intermedKey1, 32, 64));
+
+        Certificate intermedCert2 = IDPassReader.generateChildCertificate(intermedKey1,
+                Arrays.copyOfRange(signatureKey, 32, 64));
+
+        Certificates intermedCerts = Certificates.newBuilder()
+                .addCert(intermedCert1)
+                .addCert(intermedCert2)
+                .build();
+
+        /*
+        Initialize the library via an IDPassReader instance with mandatory key set and an
+        optional root certificates
+         */
+
+        IDPassReader reader = new IDPassReader(keySet, rootCerts);
+
+        /* Fill-up personal details of an identity to register */
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+        Ident ident = Ident.newBuilder()
+                .setGivenName("John")
+                .setSurName("Doe")
+                .setPin("1234")
+                .setPlaceOfBirth("Aubusson, France")
+                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
+                .setPhoto(ByteString.copyFrom(photo))
+                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"))
+                .build();
+
+        /*
+        Create an identity card for ident with intermediate certificates. This ID card can be
+        rendered as a QR code.
+         */
+
+        Card card = reader.newCard(ident, intermedCerts);
+        assertTrue(card.verifyCertificate());
+    }
+
+    @Test
+    public void testMinimalCompleteFlow()
+            throws IOException, IDPassException, NotFoundException
+    {
+        byte[] encryptionKey = IDPassReader.generateEncryptionKey();
+        byte[] signatureKey = IDPassReader.generateSecretSignatureKey();
+
+        /* Initialize a key set */
+
+        KeySet keySet = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(encryptionKey))
+                .setSignatureKey(ByteString.copyFrom(signatureKey))
+                .build();
+
+        /* Initialize the library via an IDPassReader instance with mandatory key set */
+
+        IDPassReader reader = new IDPassReader(keySet, null);
+
+        /* Fill-up personal details of an identity to register */
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+        Ident ident = Ident.newBuilder()
+                .setGivenName("John")
+                .setSurName("Doe")
+                .setPin("1234")
+                .setPlaceOfBirth("Aubusson, France")
+                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
+                .setPhoto(ByteString.copyFrom(photo))
+                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A").setKey("place").setValue("Shell Beach"))
+                .build();
+
+        /*
+        Create an identity card for ident with intermediate certificates. This ID card can be
+        rendered as a QR code.
+         */
+
+        Card card = reader.newCard(ident, null);
+
+        /* Render the identity card as a QR code image */
+
+        BufferedImage qrCode = card.asQRCode();
+
+        /* Read the QR code image as an identity card */
+
+        Card c = reader.open(qrCode);
+
+        /* Authenticate identity card with somebody else photo should fail */
+        byte[] photo_brad = Files.readAllBytes(Paths.get("testdata/brad.jpg"));
+
+        try {
+            c.authenticateWithFace(photo_brad);
+            assertFalse(true);
+        } catch (CardVerificationException e) {
+        }
+
+        /* Authenticate identity card with owner's photo should succeed */
+
+        try {
+            c.authenticateWithFace(photo);
+            assertEquals(c.getGivenName(),"John");
+        } catch (CardVerificationException e) {
+            assertFalse(true);
+        }
+    }
+
+    @Test
+    public void testRevokedCertificate() throws InvalidProtocolBufferException, IDPassException
+    {
+        /* Prepare the key set */
+
+        byte[] encryptionKey = IDPassReader.generateEncryptionKey();
+        byte[] signatureKey = IDPassReader.generateSecretSignatureKey();
+
+        KeySet keySet = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(encryptionKey))
+                .setSignatureKey(ByteString.copyFrom(signatureKey))
+                .build();
+
+        /* Prepare the root certificates list */
+
+        byte[] rootKey = IDPassReader.generateSecretSignatureKey();
+        Certificate rootCert1 = IDPassReader.generateRootCertificate(rootKey);
+        Certificates rootCerts = Certificates.newBuilder()
+                                    .addCert(rootCert1)
+                                    .build();
+
+        /* Prepare the intermediate certificates */
+
+        byte[] intermedKey1 = IDPassReader.generateSecretSignatureKey();
+        Certificate intermedCert1 = IDPassReader.generateChildCertificate(rootKey,
+                Arrays.copyOfRange(intermedKey1, 32, 64));
+        Certificate intermedCert2 = IDPassReader.generateChildCertificate(intermedKey1,verificationkey);
+        Certificates intermedCerts = Certificates.newBuilder()
+                                        .addCert(intermedCert1)
+                                        .addCert(intermedCert2)
+                                        .build();
+
+        IDPassReader reader = new IDPassReader(keySet, rootCerts);
+
+        assertTrue(reader.addIntermediateCertificates(intermedCerts));
+
+        IDPassReader.addRevokedKey(Arrays.copyOfRange(intermedKey1, 32, 64));
+        assertFalse(reader.addIntermediateCertificates(intermedCerts));
     }
 
 }

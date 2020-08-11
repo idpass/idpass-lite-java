@@ -16,6 +16,7 @@ This is a Java wrapper over the [libidpasslite](https://github.com/newlogic42/la
 - verify card with pin
 - sign with card
 - encrypt with card
+- add/revoke/verify certificates
 - generate QR Code
 - read QR Code
 
@@ -40,23 +41,29 @@ dependencies {
 ### 2. Usage
 
 ```java
-IDPassReader reader = new IDPassReader(encryptionkey, signaturekey);
+KeySet keySet = KeySet.newBuilder()
+	.setEncryptionKey(ByteString.copyFrom(encryptionKey))
+	.setSignatureKey(ByteString.copyFrom(signatureKey))
+	.build();
 
-Card card = new Card(reader,
-        "John",
-        "Doe",
-        new Date(),
-        "Aubusson, France",
-        null,
-        null,
-        Files.readAllBytes(Paths.get("testdata/manny1.bmp")),
-        "1234");
+IDPassReader reader = new IDPassReader(keySet, rootCerts);
+
+byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+Ident ident = Ident.newBuilder()
+	.setGivenName("John")
+	.setSurName("Doe")
+	.setPin("1234")
+	.setPlaceOfBirth("Aubusson, France")
+	.setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
+	.setPhoto(ByteString.copyFrom(photo))
+	.addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.5ft"))
+	.addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"))
+	.build();
+
+Card card = reader.newCard(ident, intermedCerts);
 
 BufferedImage qrCode = card.asQRCode();
-
 Card readCard = reader.open(qrCode);
-card.authenticateWithFace(Files.readAllBytes(Paths.get("testdata/manny4.jpg")));
-
+card.authenticateWithFace(photo);
 readCard.getGivenName();
-
 ```

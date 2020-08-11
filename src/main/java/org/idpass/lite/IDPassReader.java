@@ -86,23 +86,19 @@ public class IDPassReader {
     /**
      * The library is initialized with 3 types of keys.
      *
-     * encryptionKey: A crypto_aead_chacha20poly1305_IETF_KEYBYTES key.
+     * KeySet::encryptionKey: A crypto_aead_chacha20poly1305_IETF_KEYBYTES key.
      * The encrypted content of the QR Code card is protected by this
      * symmetric key.
      *
-     * signatureKey: An ED25519 key that is used both for encryption and
+     * KeySet::signatureKey: An ED25519 key that is used both for encryption and
      * signing. The encrypted content of the QR code card is signed by
      * this key.
      *
-     * verificationKeys: This is a list of public keys. A facial recognition
+     * KeySet::verificationKeys: This is a list of public keys. A facial recognition
      * match and a found verification key from this list are the required
      * access conditions to open a card.
      */
     private long ctx; // handle to library
-    protected byte[] encryptionKey;
-    protected byte[] signatureKey;
-    protected byte[] verificationKeys;
-
     protected KeySet m_keyset;
 
     static {
@@ -486,5 +482,10 @@ public class IDPassReader {
     {
         byte[] decrypted = decrypt_with_card(ctx, data, skpk);
         return decrypted;
+    }
+
+    public boolean addIntermediateCertificates(Certificates certs)
+    {
+        return add_certificates(ctx, certs.toByteArray());
     }
 }
