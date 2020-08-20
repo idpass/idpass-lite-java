@@ -29,6 +29,7 @@ import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.imageio.ImageIO;
@@ -115,15 +116,11 @@ public class TestCases {
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
 
-        Card card2 = reader2.open(card.asBytes(), true);
-        assertFalse(card2.verifyCertificate());
         try {
-            card2.authenticateWithPIN("1234");
+            Card card2 = reader2.open(card.asBytes(), true);
             assertTrue(false);
-        } catch (Exception e) {
-            // because the card's certificate chain
-            // could not find needed root certificate
-        }
+        } catch (InvalidCardException ignored) {}
+
     }
 
     @Test
@@ -268,15 +265,11 @@ public class TestCases {
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
 
-        card2 = reader3.open(card.asBytes(), true);
-        assertFalse(card2.verifyCertificate());
         try {
-            card2.authenticateWithPIN(("1234"));
+            card2 = reader3.open(card.asBytes(), true);
             assertTrue(false);
-        } catch (CardVerificationException e) {
-            // should go here, because root certificates of reader3
-            // cannot anchor the certificate chain in the  QR code ID
-        }
+        } catch (InvalidCardException ignored) {}
+
     }
 
     @Test
@@ -457,6 +450,7 @@ public class TestCases {
         assertArrayEquals(card.asBytes(), readCard.asBytes());
     }
 
+    @Ignore("still checking")
     @Test
     public void testGetQRCodeFromPhoto()
             throws IOException, IDPassException, NotFoundException

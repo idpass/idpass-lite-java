@@ -110,47 +110,31 @@ public class Card {
 
         this.cardAsByte = card;
 
-        verifyPublicCardSignature(this.cards.getPublicCard());
+        if (!verifyCardSignature()) {
+            throw new InvalidCardException();
+        }
         updateDetails();
     }
 
     /**
      *
-     * @param publicCard The public region of the QR code ID
      * @throws IDPassException custom exception
      */
-    private void verifyPublicCardSignature(PublicSignedIDPassCard publicCard)
-            throws IDPassException, InvalidProtocolBufferException
+    private boolean verifyCardSignature()
+            throws InvalidProtocolBufferException
     {
+        /*
         if (!publicCard.hasDetails()) {
-            return;
-        }
+            return true;
+        }*/
+
         IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
-        byte[] decrypted = this.reader.cardDecrypt(fullcard.getEncryptedCard().toByteArray());
-        ByteBuffer blob = ByteBuffer.allocate(publicCard.getSerializedSize() + decrypted.length);
-        blob.put(decrypted);
-        blob.put(publicCard.toByteArray());
-        byte[] signerPublicKey = fullcard.getSignerPublicKey().toByteArray();
-
-        boolean found = false;
-        for (byteArray key : this.reader.m_keyset.getVerificationKeysList()) {
-            if (Arrays.equals(signerPublicKey, key.getVal().toByteArray())) {
-                found = true;
-                break;
-            }
+        if (!this.reader.verifyCardSignature(fullcard)) {
+            //throw new InvalidCardException("Card Signature does not verify");
+            return false;
         }
 
-        if(!found) {
-            boolean flag2 = this.reader.verifySignature(blob.array(), fullcard.getSignature().toByteArray(), signerPublicKey);
-            if (!flag2) {
-                throw new IDPassException("Signature does not match");
-            }
-            return;
-        }
-        boolean flag = this.reader.verifySignature(blob.array(), fullcard.getSignature().toByteArray(), signerPublicKey);
-        if (!flag) {
-            throw new IDPassException("Signature does not match");
-        }
+        return true;
     }
 
     /**

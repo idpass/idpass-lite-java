@@ -153,11 +153,11 @@ public class IDPassReader {
     public Card open(byte[] bCard, boolean skipCertificateVerification)
             throws IDPassException, InvalidProtocolBufferException
     {
-        Card card = new Card(this, bCard);
-        if(!skipCertificateVerification && !card.verifyCertificate()) {
-            throw new InvalidCardException("Certificate could not be verified");
-        }
-        return card;
+            Card card = new Card(this, bCard);
+            if (!skipCertificateVerification && !card.verifyCertificate()) {
+                throw new InvalidCardException("Certificate could not be verified");
+            }
+            return card;
     }
 
 
@@ -346,6 +346,7 @@ public class IDPassReader {
     private static native void add_revoked_key(byte[] pubkey);
     private native boolean add_certificates(long ctx, byte[] intermedcerts);
     private native int verify_card_certificate(long ctx, byte[] blob);
+    private native boolean verify_card_signature(long ctx, byte[] blob);
     //=========================================================
 
     public int verifyCardCertificate(IDPassCards fullcard)
@@ -380,6 +381,20 @@ public class IDPassReader {
             byte[] pubkey)
     {
         return verify_with_card(ctx,msg,signature,pubkey);
+    }
+
+    /**
+     * This is used to verify that the issued QR code ID
+     * card came from a trusted issuer.
+     * @param fullcard The issued QR code ID card
+     * @return true if the message was signed by the key
+     */
+    protected boolean verifyCardSignature(IDPassCards fullcard)
+    {
+        byte[] fullcardblob = fullcard.toByteArray();
+        boolean flag = verify_card_signature(ctx, fullcardblob);
+
+        return flag;
     }
 
     /**
