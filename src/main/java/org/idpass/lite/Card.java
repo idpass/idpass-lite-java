@@ -87,7 +87,7 @@ public class Card {
     {
         IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
         int nCerts = reader.verifyCardCertificate(fullcard);
-        return (nCerts == -1) ? false : true;
+        return (nCerts < 0) ? false : true;
     }
 
     /**

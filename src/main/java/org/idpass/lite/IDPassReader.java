@@ -474,16 +474,14 @@ public class IDPassReader {
             throws InvalidProtocolBufferException
     {
         Certificate c = Certificate.parseFrom(generate_root_certificate(secretKey));
-        Certificate cc = c.toBuilder().setDesc("ROOTCERT").build();
-        return cc;
+        return c;
     }
 
     public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
             throws InvalidProtocolBufferException
     {
         Certificate c = Certificate.parseFrom(generate_child_certificate(parentSecretKey, childSecretKey));
-        Certificate cc = c.toBuilder().setDesc("CHILDCERT").build();
-        return cc;
+        return c;
     }
 
     public byte[] encrypt(byte[] data, byte[] fullcard)

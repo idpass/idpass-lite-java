@@ -493,12 +493,12 @@ public class TestCases {
                         .setVal(ByteString.copyFrom(wrongVerificationkey)).build())
                 .build();
 
-        reader = new IDPassReader(ks2, null);
+        IDPassReader reader2 = new IDPassReader(ks2, null);
 
         try {
-            reader.open(card.asBytes());
-            assertTrue(false);
+            Card card2 = reader2.open(card.asBytes());
         } catch (IDPassException e) {
+            assertTrue(false);
         }
     }
 
@@ -543,27 +543,28 @@ public class TestCases {
                 .setVal(ByteString.copyFrom(otherVerificationkey)))
                 .build();
 
+        // reader is created without rootcerts
         IDPassReader reader = new IDPassReader(m_keyset, null);
 
+        // card is created wiithout intermedcerts
         Card card = newTestCard(reader);
 
         KeySet ks1 = ksBuilder.addVerificationKeys(byteArray.newBuilder()
                         .setTyp(byteArray.Typ.ED25519PUBKEY)
                         .setVal(ByteString.copyFrom(otherVerificationkey))).build();
 
-        reader = new IDPassReader(ks1, null);
+        // reader2 created with different keyset from reader1
+        IDPassReader reader2 = new IDPassReader(ks1, null);
 
         Card newCard = null;
 
         try {
-            newCard = reader.open(card.asBytes());
-            assertFalse(true);
+            // card created in reader1 can be open by reader2 even if
+            // they don't have same keyset.
+            newCard = reader2.open(card.asBytes());
         } catch (IDPassException e) {
-            reader = new IDPassReader(m_keyset, null);
-            newCard = reader.open(card.asBytes());
-            newCard.authenticateWithPIN("1234");
+            assertFalse(true);
         }
-
     }
 
     @Test
