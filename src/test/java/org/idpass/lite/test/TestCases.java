@@ -317,7 +317,8 @@ public class TestCases {
         assertFalse(card2.verifyCertificate());
 
         try {
-            card2.authenticateWithPIN(("1234"));assertTrue(false);
+            card2.authenticateWithPIN(("1234"));
+            assertTrue(false);
         } catch (CardVerificationException ignored) {
             // should go here, because root certificates of reader3
             // cannot anchor the certificate chain in the  QR code ID
