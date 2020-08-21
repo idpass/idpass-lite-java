@@ -313,11 +313,15 @@ public class TestCases {
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
 
-        try {
-            card2 = reader3.open(card.asBytes(), true);
-            assertTrue(false);
-        } catch (InvalidCardException ignored) {}
+        card2 = reader3.open(card.asBytes(), true);
+        assertFalse(card2.verifyCertificate());
 
+        try {
+            card2.authenticateWithPIN(("1234"));assertTrue(false);
+        } catch (CardVerificationException ignored) {
+            // should go here, because root certificates of reader3
+            // cannot anchor the certificate chain in the  QR code ID
+        }
     }
 
     @Test
