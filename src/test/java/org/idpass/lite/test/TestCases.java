@@ -167,9 +167,9 @@ public class TestCases {
         Certificate signer0RootCert = IDPassReader.generateRootCertificate(signer0);
         Certificate signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, publicVerificationKey); // very important
 
-        Certificates rootcertificates = Certificates.newBuilder().addCert(signer0RootCert).build();
+        Certificates rootCertificates = Certificates.newBuilder().addCert(signer0RootCert).build();
 
-        IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
+        IDPassReader reader = new IDPassReader(m_keyset, rootCertificates);
 
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
         Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
@@ -192,10 +192,15 @@ public class TestCases {
                         .setVal(ByteString.copyFrom(newVerificationKey)).build())
                 .build();
 
-        IDPassReader reader2 = new IDPassReader(keyset2, rootcertificates);
+        IDPassReader reader2 = new IDPassReader(keyset2, rootCertificates);
         Card card2 = reader2.open(card.asBytes());
         assertNotNull(card2);
         //TODO open the private part
+
+        try {
+            card2.authenticateWithPIN("1234");
+            assertTrue(false);
+        } catch (CardVerificationException ignored) {}
     }
 
 
@@ -287,7 +292,7 @@ public class TestCases {
 
         try {
             card.authenticateWithPIN("1234");
-        } catch (Exception e) {
+        } catch (CardVerificationException ignored) {
         }
         assertTrue(card.verifyCertificate());
         assertNotNull(card);
