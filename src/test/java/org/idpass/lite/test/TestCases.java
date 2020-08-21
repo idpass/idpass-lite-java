@@ -46,29 +46,33 @@ import static org.junit.Assert.*;
 public class TestCases {
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
-    byte[] verificationkey  = Arrays.copyOfRange(signaturekey, 32, 64);
+    byte[] publicVerificationKey = Arrays.copyOfRange(signaturekey, 32, 64);
 
     KeySet m_keyset = KeySet.newBuilder()
             .setEncryptionKey(ByteString.copyFrom(encryptionkey))
             .setSignatureKey(ByteString.copyFrom(signaturekey))
             .addVerificationKeys(byteArray.newBuilder()
                     .setTyp(byteArray.Typ.ED25519PUBKEY)
-                    .setVal(ByteString.copyFrom(verificationkey)).build())
+                    .setVal(ByteString.copyFrom(publicVerificationKey)).build())
             .build();
 
-    Ident.Builder m_IdentBuilder = Ident.newBuilder()
-            .setGivenName("John")
-            .setSurName("Doe")
-            .setPin("1234")
-            .setPlaceOfBirth("Aubusson, France")
-            .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
-            .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
-            .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"));
+
+    private Ident.Builder newIdentBuilder() throws IDPassException, IOException {
+        return Ident.newBuilder()
+                .setGivenName("John")
+                .setSurName("Doe")
+                .setPin("1234")
+                .setPlaceOfBirth("Aubusson, France")
+                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
+                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"));
+    }
+
 
     private Card newTestCard(IDPassReader reader) throws IDPassException, IOException {
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
 
-        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo))
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo))
                 .addPubExtra(KV.newBuilder().setKey("sports").setValue("boxing").setKey("game").setValue("cards"))
                 .addPrivExtra(KV.newBuilder().setKey("age").setValue("35").setKey("address").setValue("16th Elm Street"))
                 .build();
@@ -81,21 +85,22 @@ public class TestCases {
     @Test
     public void testcreateCard2WithCertificates()
             throws IOException, IDPassException {
-        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
+        byte[] rootKey = IDPassReader.generateSecretSignatureKey();
 
-        Certificate signer0RootCert = IDPassReader.generateRootCertificate(signer0);
-        Certificate signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
+        Certificate rootCert = IDPassReader.generateRootCertificate(rootKey);
+        Certificate signerFromRootCert = IDPassReader.generateChildCertificate(rootKey, publicVerificationKey); // very important
 
-        Certificates rootcertificates  = Certificates.newBuilder().addCert(signer0RootCert).build();
+        Certificates rootCertificates = Certificates.newBuilder().addCert(rootCert).build();
 
-        IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
-        Certificates certs = Certificates.newBuilder().addCert(signerFromSigner0Cert).build();
+        IDPassReader reader = new IDPassReader(m_keyset, rootCertificates);
 
         //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
-        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
 
+        Certificates certs = Certificates.newBuilder().addCert(signerFromRootCert).build();
         Card card = reader.newCard(ident, certs);
+
         Card cardOK = reader.open(card.asBytes());
         assertNotNull(cardOK);
 
@@ -128,19 +133,18 @@ public class TestCases {
         byte[] signer0 = IDPassReader.generateSecretSignatureKey();
 
         Certificate signer0RootCert = IDPassReader.generateRootCertificate(signer0);
-        Certificate signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
+        Certificate signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, publicVerificationKey); // very important
 
         Certificates rootcertificates  = Certificates.newBuilder().addCert(signer0RootCert).build();
 
         IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
 
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
-        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
 
+        Certificates certificateChainToRoot = Certificates.newBuilder().addCert(signerFromSigner0Cert).build();
 
-        Certificates certs = Certificates.newBuilder().addCert(signerFromSigner0Cert).build();
-
-        Card card = reader.newCard(ident, certs);
+        Card card = reader.newCard(ident, certificateChainToRoot);
         Card cardOK = reader.open(card.asBytes());
         assertNotNull(cardOK);
 
@@ -161,14 +165,14 @@ public class TestCases {
         byte[] signer0 = IDPassReader.generateSecretSignatureKey();
 
         Certificate signer0RootCert = IDPassReader.generateRootCertificate(signer0);
-        Certificate signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
+        Certificate signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, publicVerificationKey); // very important
 
         Certificates rootcertificates = Certificates.newBuilder().addCert(signer0RootCert).build();
 
         IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
 
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
-        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
 
 
         Certificates certs = Certificates.newBuilder().addCert(signerFromSigner0Cert).build();
@@ -182,7 +186,7 @@ public class TestCases {
 
         KeySet keyset2 = KeySet.newBuilder()
                 .setEncryptionKey(ByteString.copyFrom(encryptionkey))
-                .setSignatureKey(ByteString.copyFrom(signaturekey))
+                .setSignatureKey(ByteString.copyFrom(newSignatureKey))
                 .addVerificationKeys(byteArray.newBuilder()
                         .setTyp(byteArray.Typ.ED25519PUBKEY)
                         .setVal(ByteString.copyFrom(newVerificationKey)).build())
@@ -191,6 +195,51 @@ public class TestCases {
         IDPassReader reader2 = new IDPassReader(keyset2, rootcertificates);
         Card card2 = reader2.open(card.asBytes());
         assertNotNull(card2);
+        //TODO open the private part
+    }
+
+
+
+    @Test
+    public void testOpenCardWithAnotherEncryptionKey() throws IOException, IDPassException {
+        byte[] signer0 = IDPassReader.generateSecretSignatureKey();
+
+        Certificate signer0RootCert = IDPassReader.generateRootCertificate(signer0);
+        Certificate signerFromSigner0Cert = IDPassReader.generateChildCertificate(signer0, publicVerificationKey); // very important
+
+        Certificates rootcertificates = Certificates.newBuilder().addCert(signer0RootCert).build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, rootcertificates);
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
+
+        Certificates certs = Certificates.newBuilder().addCert(signerFromSigner0Cert).build();
+
+        Card card = reader.newCard(ident, certs);
+        Card cardOK = reader.open(card.asBytes());
+        assertNotNull(cardOK);
+
+        byte[] newEncryptionkey = IDPassHelper.generateEncryptionKey();
+        byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
+        byte[] newVerificationKey = Arrays.copyOfRange(newSignatureKey, 32, 64);
+
+        KeySet newKeyset = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(newEncryptionkey))
+                .setSignatureKey(ByteString.copyFrom(newSignatureKey))
+                .addVerificationKeys(byteArray.newBuilder()
+                        .setTyp(byteArray.Typ.ED25519PUBKEY)
+                        .setVal(ByteString.copyFrom(newVerificationKey)).build())
+                .build();
+
+        IDPassReader reader2 = new IDPassReader(newKeyset, rootcertificates);
+        Card card2 = reader2.open(card.asBytes());
+        assertNotNull(card2);
+
+        try {
+            card2.authenticateWithPIN("1234");
+            assertTrue(false);
+        } catch (CardVerificationException ignored) {}
     }
 
 
@@ -212,7 +261,7 @@ public class TestCases {
         Certificate signer3From2Cert = IDPassReader.generateChildCertificate(signer2, Arrays.copyOfRange(signer3,32,64));
 
         Certificate signer4From3Cert = IDPassReader.generateChildCertificate(signer3, Arrays.copyOfRange(signer4,32,64));
-        Certificate signer4From0Cert = IDPassReader.generateChildCertificate(signer0, verificationkey); // very important
+        Certificate signer4From0Cert = IDPassReader.generateChildCertificate(signer0, publicVerificationKey); // very important
 
         Certificates rootcertificates = Certificates.newBuilder()
                 .addCert(signer0RootCert)
@@ -232,14 +281,13 @@ public class TestCases {
 
         //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
-        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
 
         Card card = reader.newCard(ident,certs);
 
         try {
             card.authenticateWithPIN("1234");
         } catch (Exception e) {
-            System.out.println("error");
         }
         assertTrue(card.verifyCertificate());
         assertNotNull(card);
@@ -273,18 +321,37 @@ public class TestCases {
     }
 
     @Test
-    public void testcreateCard()
+    public void testcreateCardWithNoCertificates()
             throws IOException, IDPassException {
 
         IDPassReader reader = new IDPassReader(m_keyset, null);
 
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
-        Ident ident = m_IdentBuilder.setPhoto(ByteString.copyFrom(photo)).build();
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
 
         Card card = reader.newCard(ident, null);
 
         assertNotNull(card);
         assertTrue(card.asBytes().length > 0);
+
+        byte[] newEncryptionkey = IDPassHelper.generateEncryptionKey();
+        byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
+        byte[] newVerificationKey = Arrays.copyOfRange(newSignatureKey, 32, 64);
+
+        KeySet newKeyset = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(newEncryptionkey))
+                .setSignatureKey(ByteString.copyFrom(newSignatureKey))
+                .addVerificationKeys(byteArray.newBuilder()
+                        .setTyp(byteArray.Typ.ED25519PUBKEY)
+                        .setVal(ByteString.copyFrom(newVerificationKey)).build())
+                .build();
+
+        IDPassReader reader2 = new IDPassReader(newKeyset, null);
+
+        try {
+            reader2.open(card.asBytes(), true);
+            assertTrue(false);
+        } catch (InvalidCardException ignored) {}
     }
 
     @Test
@@ -762,7 +829,7 @@ public class TestCases {
         byte[] intermedKey1 = IDPassReader.generateSecretSignatureKey();
         Certificate intermedCert1 = IDPassReader.generateChildCertificate(rootKey,
                 Arrays.copyOfRange(intermedKey1, 32, 64));
-        Certificate intermedCert2 = IDPassReader.generateChildCertificate(intermedKey1,verificationkey);
+        Certificate intermedCert2 = IDPassReader.generateChildCertificate(intermedKey1, publicVerificationKey);
         Certificates intermedCerts = Certificates.newBuilder()
                                         .addCert(intermedCert1)
                                         .addCert(intermedCert2)
