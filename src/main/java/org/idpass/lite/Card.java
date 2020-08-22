@@ -110,9 +110,6 @@ public class Card {
 
         this.cardAsByte = card;
 
-        if (!verifyCardSignature()) {
-            throw new InvalidCardException();
-        }
         updateDetails();
     }
 
@@ -120,7 +117,7 @@ public class Card {
      *
      * @throws IDPassException custom exception
      */
-    private boolean verifyCardSignature()
+    public boolean verifyCardSignature()
             throws InvalidProtocolBufferException
     {
         /*

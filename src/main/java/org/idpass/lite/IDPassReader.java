@@ -157,6 +157,13 @@ public class IDPassReader {
             if (!skipCertificateVerification && !card.verifyCertificate()) {
                 throw new InvalidCardException("Certificate could not be verified");
             }
+
+            if (skipCertificateVerification) {
+                if (!card.verifyCardSignature()) {
+                    throw new InvalidCardException();
+                }
+            }
+
             return card;
     }
 
