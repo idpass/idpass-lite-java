@@ -115,7 +115,8 @@ public class Card {
 
     /**
      *
-     * @throws IDPassException custom exception
+     * @throws InvalidProtocolBufferException Protobuf exception
+     * @return True of certificate is valid
      */
     public boolean verifyCardSignature()
             throws InvalidProtocolBufferException
