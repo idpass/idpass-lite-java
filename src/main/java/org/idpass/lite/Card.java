@@ -77,17 +77,19 @@ public class Card {
     /**
      * Verify the signature using certificate chain.
      *
-     * @throws InvalidProtocolBufferException Protobuf exception
      * @return True Returns true if certificate chain
      * validates and verifies the IDPassCard's signature.
      */
 
     public boolean verifyCertificate()
-            throws InvalidProtocolBufferException
     {
-        IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
-        int nCerts = reader.verifyCardCertificate(fullcard);
-        return (nCerts < 0) ? false : true;
+        try {
+            IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
+            int nCerts = reader.verifyCardCertificate(fullcard);
+            return (nCerts < 0) ? false : true;
+        } catch (InvalidProtocolBufferException e) {
+            return false;
+        }
     }
 
     /**
@@ -95,17 +97,16 @@ public class Card {
      * @param idPassReader The reader instance
      * @param card The QR code content byte array
      * @throws IDPassException custom exception
-     * @throws InvalidProtocolBufferException Protobuf exception
      */
     public Card(IDPassReader idPassReader, byte[] card)
-            throws IDPassException, InvalidProtocolBufferException
+            throws IDPassException
     {
         this.reader = idPassReader;
 
         try {
             this.cards = IDPassCards.parseFrom(card);
         } catch (InvalidProtocolBufferException e) {
-            throw new InvalidCardException();
+            throw new IDPassException();
         }
 
         this.cardAsByte = card;
@@ -115,20 +116,16 @@ public class Card {
 
     /**
      *
-     * @throws InvalidProtocolBufferException Protobuf exception
      * @return True of certificate is valid
      */
     public boolean verifyCardSignature()
-            throws InvalidProtocolBufferException
     {
-        /*
-        if (!publicCard.hasDetails()) {
-            return true;
-        }*/
-
-        IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
-        if (!this.reader.verifyCardSignature(fullcard)) {
-            //throw new InvalidCardException("Card Signature does not verify");
+        try {
+            IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
+            if (!this.reader.verifyCardSignature(fullcard)) {
+                return false;
+            }
+        } catch (InvalidProtocolBufferException e) {
             return false;
         }
 

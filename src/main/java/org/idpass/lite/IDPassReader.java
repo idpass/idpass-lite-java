@@ -134,10 +134,9 @@ public class IDPassReader {
      * @param card The binary content of a card
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
-     * @throws InvalidProtocolBufferException Protobuf exception
      */
     public Card open(byte[] card)
-            throws IDPassException, InvalidProtocolBufferException
+            throws IDPassException
     {
         return open(card, false);
     }
@@ -147,11 +146,10 @@ public class IDPassReader {
      * @param bCard The binary content of a card
      * @param skipCertificateVerification Skip flag for certificate verification
      * @return Wrapper of the card
-     * @throws IDPassException ID PASS exception
-     * @throws InvalidProtocolBufferException Protobuf exception
+     * @throws InvalidCardException ID PASS exception
      */
     public Card open(byte[] bCard, boolean skipCertificateVerification)
-            throws IDPassException, InvalidProtocolBufferException
+            throws InvalidCardException, IDPassException
     {
             Card card = new Card(this, bCard);
             if (!skipCertificateVerification && !card.verifyCertificate()) {
@@ -174,10 +172,9 @@ public class IDPassReader {
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
      * @throws NotFoundException QR Code not Found
-     * @throws InvalidProtocolBufferException Protobuf exception
      */
     public Card open(BufferedImage bufferedImage)
-            throws IDPassException, NotFoundException, InvalidProtocolBufferException
+            throws IDPassException, NotFoundException
     {
         LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
         BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
@@ -478,17 +475,25 @@ public class IDPassReader {
     }
 
     public static Certificate generateRootCertificate(byte[] secretKey)
-            throws InvalidProtocolBufferException
+            throws IDPassException
     {
-        Certificate c = Certificate.parseFrom(generate_root_certificate(secretKey));
-        return c;
+        try {
+            Certificate c = Certificate.parseFrom(generate_root_certificate(secretKey));
+            return c;
+        } catch (InvalidProtocolBufferException e) {
+            throw new IDPassException("protobuf::parseFrom");
+        }
     }
 
     public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
-            throws InvalidProtocolBufferException
+            throws IDPassException
     {
-        Certificate c = Certificate.parseFrom(generate_child_certificate(parentSecretKey, childSecretKey));
-        return c;
+        try {
+            Certificate c = Certificate.parseFrom(generate_child_certificate(parentSecretKey, childSecretKey));
+            return c;
+        } catch (InvalidProtocolBufferException e) {
+            throw new IDPassException("protobuf::parseFrom");
+        }
     }
 
     protected byte[] encrypt(byte[] data, byte[] fullcard)
