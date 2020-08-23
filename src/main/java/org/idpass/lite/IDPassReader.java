@@ -418,7 +418,7 @@ public class IDPassReader {
         if (certificates != null) {
             // tip will sign
             if (!add_certificates(ctx, certificates.toByteArray())) {
-                System.out.println("invalid chain");
+                throw new InvalidCardException("Certificate could not be verified");
             }
         }
 
@@ -491,14 +491,14 @@ public class IDPassReader {
         return c;
     }
 
-    public byte[] encrypt(byte[] data, byte[] fullcard)
+    protected byte[] encrypt(byte[] data, byte[] fullcard)
     {
         byte[] encrypted = encrypt_with_card(ctx, fullcard, data);
         return encrypted;
     }
 
 
-    public byte[] decrypt(byte[] data, byte[] skpk)
+    protected byte[] decrypt(byte[] data, byte[] skpk)
     {
         byte[] decrypted = decrypt_with_card(ctx, data, skpk);
         return decrypted;
