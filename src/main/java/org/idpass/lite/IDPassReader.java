@@ -194,6 +194,27 @@ public class IDPassReader {
         return this.open(card);
     }
 
+    public Card open(BufferedImage bufferedImage, boolean skipCertificateVerfication)
+            throws IDPassException, NotFoundException
+    {
+        LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+        byte[] card;
+
+
+        Result result = new MultiFormatReader().decode(bitmap);
+        Map m = result.getResultMetadata();
+
+        if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
+            List L = (List)m.get(ResultMetadataType.BYTE_SEGMENTS);
+            card = (byte[])L.get(0);
+        } else {
+            card = result.getText().getBytes();
+        }
+        return this.open(card, skipCertificateVerfication);
+    }
+
     /**
      * Create a new ID PASS Card.
      * @param ident The person identity details

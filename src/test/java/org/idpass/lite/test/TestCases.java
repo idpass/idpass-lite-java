@@ -55,7 +55,15 @@ public class TestCases {
                     .setTyp(byteArray.Typ.ED25519PUBKEY)
                     .setVal(ByteString.copyFrom(publicVerificationKey)).build())
             .build();
+    // Setup useful root certificate and intermediate certificate for test cases
+    byte[] m_rootkey = IDPassHelper.generateSecretSignatureKey();
+    Certificate m_rootcert = IDPassReader.generateRootCertificate(m_rootkey);
+    Certificates m_rootcerts = Certificates.newBuilder().addCert(m_rootcert).build();
+    Certificate m_childcert = IDPassReader.generateChildCertificate(m_rootkey, publicVerificationKey);
+    Certificates m_certchain = Certificates.newBuilder().addCert(m_childcert).build();
 
+    public TestCases() throws IDPassException {
+    }
 
     private Ident.Builder newIdentBuilder() throws IDPassException, IOException {
         return Ident.newBuilder()
@@ -68,6 +76,17 @@ public class TestCases {
                 .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"));
     }
 
+    private Card newTestCard(IDPassReader reader, Certificates certchain) throws IDPassException, IOException {
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+
+        Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo))
+                .addPubExtra(KV.newBuilder().setKey("sports").setValue("boxing").setKey("game").setValue("cards"))
+                .addPrivExtra(KV.newBuilder().setKey("age").setValue("35").setKey("address").setValue("16th Elm Street"))
+                .build();
+
+        Card card = reader.newCard(ident,certchain);
+        return card;
+    }
 
     private Card newTestCard(IDPassReader reader) throws IDPassException, IOException {
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
@@ -123,8 +142,9 @@ public class TestCases {
 
         try {
             Card card2 = reader2.open(card.asBytes(), true);
+        } catch (InvalidCardException ignored) {
             assertTrue(false);
-        } catch (InvalidCardException ignored) {}
+        }
 
     }
 
@@ -522,7 +542,7 @@ public class TestCases {
         assertTrue(qrCode.getHeight() > 50);
         assertTrue(qrCode.getWidth() > 50);
 
-        Card readCard = reader.open(qrCode);
+        Card readCard = reader.open(qrCode, true); // HERE
         assertNotNull(readCard);
         assertArrayEquals(card.asBytes(), readCard.asBytes());
     }
@@ -558,9 +578,9 @@ public class TestCases {
         byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
         byte[] wrongVerificationkey = Arrays.copyOfRange(IDPassHelper.generateSecretSignatureKey(),32,64);
 
-        IDPassReader reader = new IDPassReader(m_keyset, null);
+        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
 
-        Card card = newTestCard(reader);
+        Card card = newTestCard(reader, m_certchain);
 
         KeySet ks2 = KeySet.newBuilder()
                 .setEncryptionKey(ByteString.copyFrom(encryptionkey))
@@ -570,12 +590,12 @@ public class TestCases {
                         .setVal(ByteString.copyFrom(wrongVerificationkey)).build())
                 .build();
 
-        IDPassReader reader2 = new IDPassReader(ks2, null);
+        IDPassReader reader2 = new IDPassReader(ks2, m_rootcerts);
 
         try {
             Card card2 = reader2.open(card.asBytes());
         } catch (IDPassException e) {
-            assertTrue(false);
+            assertTrue(false); // HERE
         }
     }
 
@@ -620,18 +640,18 @@ public class TestCases {
                 .setVal(ByteString.copyFrom(otherVerificationkey)))
                 .build();
 
-        // reader is created without rootcerts
-        IDPassReader reader = new IDPassReader(m_keyset, null);
+        // reader is created with rootcerts
+        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
 
-        // card is created wiithout intermedcerts
-        Card card = newTestCard(reader);
+        // card is created with intermedcerts
+        Card card = newTestCard(reader, m_certchain);
 
         KeySet ks1 = ksBuilder.addVerificationKeys(byteArray.newBuilder()
                         .setTyp(byteArray.Typ.ED25519PUBKEY)
                         .setVal(ByteString.copyFrom(otherVerificationkey))).build();
 
         // reader2 created with different keyset from reader1
-        IDPassReader reader2 = new IDPassReader(ks1, null);
+        IDPassReader reader2 = new IDPassReader(ks1, m_rootcerts);
 
         Card newCard = null;
 
@@ -640,7 +660,7 @@ public class TestCases {
             // they don't have same keyset.
             newCard = reader2.open(card.asBytes());
         } catch (IDPassException e) {
-            assertFalse(true);
+            assertFalse(true); // HERE
         }
     }
 
@@ -792,7 +812,7 @@ public class TestCases {
 
         /* Read the QR code image as an identity card */
 
-        Card c = reader.open(qrCode);
+        Card c = reader.open(qrCode, true); // HERE
 
         /* Authenticate identity card with somebody else photo should fail */
         byte[] photo_brad = Files.readAllBytes(Paths.get("testdata/brad.jpg"));
