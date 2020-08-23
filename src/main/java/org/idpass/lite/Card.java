@@ -369,8 +369,8 @@ public class Card {
             IDPassCard card = SignedIDPassCard.parseFrom(decrypted).getCard();
             byte[] card_skpk = card.getEncryptionKey().toByteArray(); // private key
 
-            byte[] encrypted = reader.decrypt(data, card_skpk);
-            return encrypted;
+            byte[] data_decrypted = reader.decrypt(data, card_skpk);
+            return data_decrypted;
 
         } catch (InvalidProtocolBufferException e) {
             throw new InvalidCardException();
