@@ -356,7 +356,7 @@ public class IDPassReader {
     private native byte[] verify_card_with_face(long ctx, byte[] photo, byte[] ecard);
     private native byte[] verify_card_with_pin(long ctx, String pin, byte[] ecard);
     private native byte[] encrypt_with_card(long ctx, byte[] ecard, byte[] data);
-    private native byte[] decrypt_with_card(long ctx, byte[] ciphertext, byte[] skpk);
+    private native byte[] decrypt_with_card(long ctx, byte[] ecard, byte[] data);
     private native byte[] sign_with_card(long ctx, byte[] ecard, byte[] data);
     private native boolean verify_with_card(long ctx, byte[] msg, byte[] signature, byte[] pubkey);
     private native BitSet generate_qrcode_pixels(long ctx, byte[] data);
@@ -524,9 +524,9 @@ public class IDPassReader {
     }
 
 
-    protected byte[] decrypt(byte[] data, byte[] skpk)
+    protected byte[] decrypt(byte[] data, byte[] fullcard)
     {
-        byte[] decrypted = decrypt_with_card(ctx, data, skpk);
+        byte[] decrypted = decrypt_with_card(ctx, fullcard, data);
         return decrypted;
     }
 

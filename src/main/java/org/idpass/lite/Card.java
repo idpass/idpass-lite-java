@@ -359,18 +359,7 @@ public class Card {
             throws NotVerifiedException, InvalidCardException
     {
         checkIsAuthenticated();
-
-        byte[] ecard = cards.getEncryptedCard().toByteArray();
-        byte[] decrypted = this.reader.cardDecrypt(ecard);
-        try {
-            IDPassCard card = SignedIDPassCard.parseFrom(decrypted).getCard();
-            byte[] card_skpk = card.getEncryptionKey().toByteArray(); // private key
-
-            byte[] data_decrypted = reader.decrypt(data, card_skpk);
-            return data_decrypted;
-
-        } catch (InvalidProtocolBufferException e) {
-            throw new InvalidCardException();
-        }
+        byte[] plaintext = reader.decrypt(data, cardAsByte);
+        return plaintext;
     }
 }
