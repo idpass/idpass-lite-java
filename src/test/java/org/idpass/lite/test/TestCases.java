@@ -360,7 +360,7 @@ public class TestCases {
         assertNotNull(card);
         assertTrue(card.asBytes().length > 0);
 
-        reader.open(card.asBytes());
+        reader.open(card.asBytes(), true);
 
 
         byte[] newEncryptionkey = IDPassHelper.generateEncryptionKey();
@@ -378,10 +378,9 @@ public class TestCases {
 
         IDPassReader reader2 = new IDPassReader(newKeyset, null);
 
-        reader2.open(card.asBytes(), true);
 
         try {
-            reader2.open(card.asBytes());
+            reader2.open(card.asBytes(), true);
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
 
@@ -397,7 +396,7 @@ public class TestCases {
 
         reader2 = new IDPassReader(newKeyset, null);
 
-        reader2.open(card.asBytes());
+        reader2.open(card.asBytes(), true);
     }
 
     @Test
