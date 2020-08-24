@@ -140,11 +140,7 @@ public class TestCases {
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
 
-        try {
-            Card card2 = reader2.open(card.asBytes(), true);
-        } catch (InvalidCardException ignored) {
-            assertTrue(false);
-        }
+        Card card2 = reader2.open(card.asBytes(), true);
 
     }
 
@@ -364,10 +360,14 @@ public class TestCases {
         assertNotNull(card);
         assertTrue(card.asBytes().length > 0);
 
+        reader.open(card.asBytes());
+
+
         byte[] newEncryptionkey = IDPassHelper.generateEncryptionKey();
         byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
         byte[] newVerificationKey = Arrays.copyOfRange(newSignatureKey, 32, 64);
 
+        //Test with new keys for everything
         KeySet newKeyset = KeySet.newBuilder()
                 .setEncryptionKey(ByteString.copyFrom(newEncryptionkey))
                 .setSignatureKey(ByteString.copyFrom(newSignatureKey))
@@ -378,10 +378,26 @@ public class TestCases {
 
         IDPassReader reader2 = new IDPassReader(newKeyset, null);
 
+        reader2.open(card.asBytes(), true);
+
         try {
-            reader2.open(card.asBytes(), true);
+            reader2.open(card.asBytes());
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
+
+
+        // Test with the same signature key, but all the other keys are different
+        newKeyset = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(newEncryptionkey))
+                .setSignatureKey(ByteString.copyFrom(newSignatureKey))
+                .addVerificationKeys(byteArray.newBuilder()
+                        .setTyp(byteArray.Typ.ED25519PUBKEY)
+                        .setVal(ByteString.copyFrom(publicVerificationKey)).build())
+                .build();
+
+        reader2 = new IDPassReader(newKeyset, null);
+
+        reader2.open(card.asBytes());
     }
 
     @Test

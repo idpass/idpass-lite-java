@@ -144,22 +144,16 @@ public class IDPassReader {
     /**
      * Parse the content of a card
      * @param bCard The binary content of a card
-     * @param skipCertificateVerification Skip flag for certificate verification
+     * @param skipVerification Skip flag for certificate verification
      * @return Wrapper of the card
      * @throws InvalidCardException ID PASS exception
      */
-    public Card open(byte[] bCard, boolean skipCertificateVerification)
+    public Card open(byte[] bCard, boolean skipVerification)
             throws InvalidCardException, IDPassException
     {
             Card card = new Card(this, bCard);
-            if (!skipCertificateVerification && !card.verifyCertificate()) {
+            if (!skipVerification && !card.verifyCertificate()) {
                 throw new InvalidCardException("Certificate could not be verified");
-            }
-
-            if (skipCertificateVerification) {
-                if (!card.verifyCardSignature()) {
-                    throw new InvalidCardException();
-                }
             }
 
             return card;
