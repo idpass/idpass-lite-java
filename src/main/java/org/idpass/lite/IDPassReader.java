@@ -18,6 +18,7 @@
 
 package org.idpass.lite;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
@@ -35,8 +36,12 @@ import org.idpass.lite.proto.IDPassCards;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -100,6 +105,7 @@ public class IDPassReader {
      */
     private long ctx; // handle to library
     protected KeySet m_keyset;
+    protected Certificates m_rootcertificates;
 
     static {
         try {
@@ -121,9 +127,35 @@ public class IDPassReader {
             throws IDPassException {
 
         m_keyset = ks;
+        m_rootcertificates = rc;
 
         // add `rootCertificates` to the parameter
         ctx = idpass_init(ks.toByteArray(), rc != null ? rc.toByteArray() : null);
+        if (ctx == 0) {
+            throw new IDPassException("ID PASS Lite could not be initialized");
+        }
+    }
+
+    /**
+     * Initializes a reader using preset configuration of keyset
+     * and root certificates from a configuration file
+     * @param configfile
+     * @throws IDPassException
+     * @throws IOException
+     */
+
+    public IDPassReader(String configfile)
+            throws IDPassException, IOException {
+
+        byte[] cfg = Files.readAllBytes(Paths.get(configfile));
+        byteArrays bas = byteArrays.parseFrom(cfg);
+        byteArray ba0 = bas.getVals(0); // keyset buf
+        byteArray ba1 = bas.getVals(1); // rootcertificates buf
+
+        m_keyset = KeySet.parseFrom(ba0.getVal().toByteArray());
+        m_rootcertificates = Certificates.parseFrom(ba1.getVal().toByteArray());
+
+        ctx = idpass_init(m_keyset.toByteArray(), m_rootcertificates != null ? m_rootcertificates.toByteArray() : null);
         if (ctx == 0) {
             throw new IDPassException("ID PASS Lite could not be initialized");
         }
@@ -152,11 +184,11 @@ public class IDPassReader {
             throws InvalidCardException, IDPassException
     {
             Card card = new Card(this, bCard);
-            if (!skipCertificateVerification && !card.verifyCertificate()) {
-                throw new InvalidCardException("Certificate could not be verified");
-            }
-
-            if (skipCertificateVerification) {
+            if (card.hasCertificate()) {
+                if (!skipCertificateVerification && !card.verifyCertificate()) {
+                    throw new InvalidCardException("Certificate could not be verified");
+                }
+            } else {
                 if (!card.verifyCardSignature()) {
                     throw new InvalidCardException();
                 }
@@ -556,5 +588,19 @@ public class IDPassReader {
     public boolean addIntermediateCertificates(Certificates certs)
     {
         return add_certificates(ctx, certs.toByteArray());
+    }
+
+    public boolean saveConfiguration(String configfile) throws IOException {
+
+        byteArray ba1 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_keyset.toByteArray())).build();
+        byteArray ba2 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_rootcertificates.toByteArray())).build();
+
+        byteArrays bas = byteArrays.newBuilder().addVals(ba1).addVals(ba2).build();
+
+        FileOutputStream fos = new FileOutputStream(configfile);
+        fos.write(bas.toByteArray());
+        fos.close();
+
+        return true;
     }
 }

@@ -74,6 +74,11 @@ public class Card {
         updateDetails();
     }
 
+    public boolean hasCertificate()
+    {
+        return this.cards.getCertificatesCount() > 0 ? true : false;
+    }
+
     /**
      * Verify the signature using certificate chain.
      *

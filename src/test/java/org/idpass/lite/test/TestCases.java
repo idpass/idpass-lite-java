@@ -33,8 +33,8 @@ import org.junit.jupiter.api.*;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -936,4 +936,91 @@ public class TestCases {
         assertTrue(card.verify(msg.getBytes(), signature,card2.getPublicKey()));
     }
 
+    @Disabled("This is only used for generating QR code images for debugging purposes")
+    @Test
+    public void testSaveQRcode() throws IDPassException, IOException {
+
+        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
+        Card card = newTestCard(reader, m_certchain);
+        File outputfile = new File("testqr2.jpg");
+        ImageIO.write(card.asQRCode(), "jpg", outputfile);
+
+        reader.saveConfiguration("reader1.cfg");
+    }
+
+    /*
+    The below test cases reads from the file system for
+    testing purposes in order to persist keyset and
+    certificates used to open a QR code ID
+    later on
+     */
+
+    @Test
+    public void test_read_id_without_certificate()
+            throws IDPassException, IOException, NotFoundException
+    {
+        // Load the keyset of the reader used to create the card
+        byte[] ks = Files.readAllBytes(Paths.get("testdata/keyset.dat"));
+        KeySet keyset = KeySet.parseFrom(ks);
+
+        // Initialize reader with proper keyset
+        IDPassReader reader = new IDPassReader(keyset, null);
+
+        File qrcodeId = new File(String.valueOf(Paths.get("testdata/image.jpg")));
+        BufferedImage bufferedImage = ImageIO.read(qrcodeId);
+
+        // Read the QR code image
+        Card cardOriginal = reader.open(bufferedImage);
+        cardOriginal.authenticateWithPIN("1234");
+        String name = cardOriginal.getGivenName();
+        assertEquals(name,"John");
+    }
+
+    @Test
+    public void test_read_id_with_certificate()
+            throws IDPassException, IOException, NotFoundException
+    {
+        // Load the keyset of the reader used to create the card
+        byte[] ks = Files.readAllBytes(Paths.get("testdata/testkeyset.dat"));
+        KeySet keyset = KeySet.parseFrom(ks);
+
+        // Load the root certs of the reader used to created the card
+        byte[] rootcertsbuf = Files.readAllBytes(Paths.get("testdata/testrootcerts.dat"));
+        Certificates rootcerts = Certificates.parseFrom(rootcertsbuf );
+
+        // Initialize reader
+        IDPassReader reader = new IDPassReader(keyset, rootcerts);
+
+        File qrcodeId = new File(String.valueOf(Paths.get("testdata/card_with_cert.jpg")));
+        BufferedImage bufferedImage = ImageIO.read(qrcodeId);
+
+        // Read the QR code image
+        Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+
+        // hereafter, correct keyset is necessary to be able to operate on the card
+
+        cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
+        String name = cardOriginal.getGivenName();
+        assertEquals(name,"John");
+    }
+
+    @Test
+    public void test_read_id_with_certificate_reader_config()
+            throws IDPassException, IOException, NotFoundException
+    {
+        // Initialize reader
+        IDPassReader reader = new IDPassReader("testdata/reader.cfg");
+
+        File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
+        BufferedImage bufferedImage = ImageIO.read(qrcodeId);
+
+        // Read the QR code image
+        Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+
+        // hereafter, correct keyset is necessary to be able to operate on the card
+
+        cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
+        String name = cardOriginal.getGivenName();
+        assertEquals(name,"John");
+    }
 }
