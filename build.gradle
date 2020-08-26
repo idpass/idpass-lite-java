@@ -36,9 +36,15 @@ sourceSets {
     }
 }
 
+test {
+    useJUnitPlatform()
+}
+
 // Dependencies
 dependencies {
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+
     testImplementation 'org.mockito:mockito-core:2.28.2'
 
     //////////////// idpass //////////////////////

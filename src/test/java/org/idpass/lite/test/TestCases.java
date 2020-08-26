@@ -29,8 +29,7 @@ import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.*;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -39,9 +38,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-
-import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestCases {
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
@@ -562,7 +559,7 @@ public class TestCases {
         assertArrayEquals(card.asBytes(), readCard.asBytes());
     }
 
-    @Ignore("still checking")
+    @Disabled("still checking")
     @Test
     public void testGetQRCodeFromPhoto()
             throws IOException, IDPassException, NotFoundException
