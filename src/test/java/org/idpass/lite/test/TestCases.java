@@ -52,12 +52,34 @@ public class TestCases {
                     .setTyp(byteArray.Typ.ED25519PUBKEY)
                     .setVal(ByteString.copyFrom(publicVerificationKey)).build())
             .build();
+
+    byte[] encryptionkey2    = IDPassHelper.generateEncryptionKey();
+    byte[] signaturekey2     = IDPassHelper.generateSecretSignatureKey();
+    byte[] publicVerificationKey2 = Arrays.copyOfRange(signaturekey2, 32, 64);
+    KeySet m_keyset2 = KeySet.newBuilder()
+            .setEncryptionKey(ByteString.copyFrom(encryptionkey2))
+            .setSignatureKey(ByteString.copyFrom(signaturekey2))
+            .addVerificationKeys(byteArray.newBuilder()
+                    .setTyp(byteArray.Typ.ED25519PUBKEY)
+                    .setVal(ByteString.copyFrom(publicVerificationKey2)).build())
+            .build();
+
     // Setup useful root certificate and intermediate certificate for test cases
     byte[] m_rootkey = IDPassHelper.generateSecretSignatureKey();
     Certificate m_rootcert = IDPassReader.generateRootCertificate(m_rootkey);
     Certificates m_rootcerts = Certificates.newBuilder().addCert(m_rootcert).build();
     Certificate m_childcert = IDPassReader.generateChildCertificate(m_rootkey, publicVerificationKey);
     Certificates m_certchain = Certificates.newBuilder().addCert(m_childcert).build();
+
+    @BeforeEach
+	void setup() {
+
+	}
+
+    @AfterEach
+	void teardown() {
+
+	}
 
     public TestCases() throws IDPassException {
     }
@@ -883,6 +905,33 @@ public class TestCases {
 
         IDPassReader.addRevokedKey(Arrays.copyOfRange(intermedKey1, 32, 64));
         assertFalse(reader.addIntermediateCertificates(intermedCerts));
+    }
+
+    @Test
+    public void testCardSignVerify() throws IOException, IDPassException, NotVerifiedException {
+        String msg = "attack at dawn!";
+        IDPassReader reader = new IDPassReader(m_keyset, null);
+
+        Card card = newTestCard(reader);
+        card.authenticateWithPIN("1234"); // needs to auth first before can sign
+
+        byte[] signature = card.sign(msg.getBytes());
+        assertTrue(signature.length == 64);
+
+        assertTrue(card.verify(msg.getBytes(), signature,card.getPublicKey()));
+        String tampered = "attack at dawn";
+        assertFalse(card.verify(tampered.getBytes(), signature, card.getPublicKey()));
+
+        IDPassReader reader2 = new IDPassReader(m_keyset2, null);
+        Card card2 = newTestCard(reader2);
+        card2.authenticateWithPIN("1234");
+        assertTrue(card2.verify(msg.getBytes(), signature, card.getPublicKey()));
+
+        signature = card2.sign(msg.getBytes());
+        assertTrue(signature.length == 64);
+
+        assertTrue(card2.verify(msg.getBytes(), signature,card2.getPublicKey()));
+        assertTrue(card.verify(msg.getBytes(), signature,card2.getPublicKey()));
     }
 
 }

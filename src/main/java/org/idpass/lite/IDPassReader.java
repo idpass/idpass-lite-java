@@ -362,8 +362,8 @@ public class IDPassReader {
     private native BitSet generate_qrcode_pixels(long ctx, byte[] data);
     private native byte[] compute_face_128d(long ctx, byte[] photo);
     private native byte[] compute_face_64d(long ctx, byte[] photo);
-    private static native byte[] generate_encryption_key(); // 32
-    private static native byte[] generate_secret_signature_key(); // 64
+    private static native boolean generate_encryption_key(byte[] enc); // 32
+    private static native boolean generate_secret_signature_keypair(byte[] pk, byte[] sk); // 64
     private native byte[] card_decrypt(long ctx, byte[] ecard, byte[] key);
     private native float compare_face_template(byte[] face1, byte[] face2);
     private static native byte[] generate_root_certificate(byte[] secretKey);
@@ -483,7 +483,15 @@ public class IDPassReader {
      */
     public static byte[] generateEncryptionKey()
     {
-        return generate_encryption_key();
+        byte[] enc = new byte[32];
+        boolean flag = generate_encryption_key(enc);
+        return enc;
+    }
+
+    public static boolean generateEncryptionKey(byte[] enc)
+    {
+        boolean flag = generate_encryption_key(enc);
+        return flag;
     }
 
     /**
@@ -492,7 +500,16 @@ public class IDPassReader {
      */
     public static byte[] generateSecretSignatureKey()
     {
-        return generate_secret_signature_key();
+        byte[] pk = new byte[32];
+        byte[] sk = new byte[64];
+        boolean flag = generate_secret_signature_keypair(pk, sk);
+        return sk;
+    }
+
+    public static boolean generateSecretSignatureKey(byte[] pk, byte[] sk)
+    {
+        boolean flag = generate_secret_signature_keypair(pk, sk);
+        return flag;
     }
 
     public static Certificate generateRootCertificate(byte[] secretKey)
@@ -528,6 +545,12 @@ public class IDPassReader {
     {
         byte[] decrypted = decrypt_with_card(ctx, fullcard, data);
         return decrypted;
+    }
+
+    protected byte[] sign(byte[] data, byte[] fullcard)
+    {
+        byte[] signature = sign_with_card(ctx, fullcard, data);
+        return signature;
     }
 
     public boolean addIntermediateCertificates(Certificates certs)

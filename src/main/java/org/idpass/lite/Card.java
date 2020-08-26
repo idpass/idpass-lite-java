@@ -362,4 +362,20 @@ public class Card {
         byte[] plaintext = reader.decrypt(data, cardAsByte);
         return plaintext;
     }
+
+    public byte[] sign(byte[] data)
+            throws NotVerifiedException
+    {
+        checkIsAuthenticated();
+        byte[] signature = reader.sign(data, cardAsByte);
+        return signature;
+    }
+
+    public boolean verify(byte[] data, byte[] signature, byte[] pubkey)
+            throws NotVerifiedException
+    {
+        checkIsAuthenticated();
+        boolean flag = reader.verifySignature(data, signature, pubkey);
+        return flag;
+    }
 }
