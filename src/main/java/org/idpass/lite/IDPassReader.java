@@ -506,7 +506,7 @@ public class IDPassReader {
         return sk;
     }
 
-    public static boolean generateSecretSignatureKey(byte[] pk, byte[] sk)
+    public static boolean generateSecretSignatureKeypair(byte[] pk, byte[] sk)
     {
         boolean flag = generate_secret_signature_keypair(pk, sk);
         return flag;

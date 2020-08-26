@@ -216,8 +216,9 @@ public class TestCases {
         Card cardOK = reader.open(card.asBytes());
         assertNotNull(cardOK);
 
-        byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
-        byte[] newVerificationKey = Arrays.copyOfRange(newSignatureKey, 32, 64);
+        byte[] newSignatureKey = new byte[64];
+        byte[] newVerificationKey = new byte[32];
+        IDPassReader.generateSecretSignatureKeypair(newVerificationKey, newSignatureKey);
 
         KeySet keyset2 = KeySet.newBuilder()
                 .setEncryptionKey(ByteString.copyFrom(encryptionkey))
@@ -261,8 +262,9 @@ public class TestCases {
         assertNotNull(cardOK);
 
         byte[] newEncryptionkey = IDPassHelper.generateEncryptionKey();
-        byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
-        byte[] newVerificationKey = Arrays.copyOfRange(newSignatureKey, 32, 64);
+        byte[] newSignatureKey = new byte[64];
+        byte[] newVerificationKey = new byte[32];
+        IDPassReader.generateSecretSignatureKeypair(newVerificationKey, newSignatureKey);
 
         KeySet newKeyset = KeySet.newBuilder()
                 .setEncryptionKey(ByteString.copyFrom(newEncryptionkey))
