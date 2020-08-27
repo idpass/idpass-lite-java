@@ -34,7 +34,6 @@ import org.junit.jupiter.api.*;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -1029,9 +1028,19 @@ public class TestCases {
     {
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
         IDPassReader reader = new IDPassReader("testdata/reader.cfg");
-        byte[] dimensions = reader.getFacialDimensions(photo, true);
+        byte[] dimensions = reader.getFaceTemplate(photo, true);
         assertTrue(dimensions.length == 128*4);
-        dimensions = reader.getFacialDimensions(photo, false);
+        dimensions = reader.getFaceTemplate(photo, false);
         assertTrue(dimensions.length == 64*2);
+
+        float threshold = reader.getFaceDiffThreshold();
+
+        byte[] photo2 = Files.readAllBytes(Paths.get("testdata/manny2.bmp"));
+
+        byte[] tmpl1 = reader.getFaceTemplate(photo, false);
+        byte[] tmpl2 = reader.getFaceTemplate(photo2, false);
+        float fdif = IDPassReader.compareFaceTemplates(tmpl1, tmpl2);
+        assertTrue(fdif <= threshold);
+
     }
 }

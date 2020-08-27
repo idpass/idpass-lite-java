@@ -448,7 +448,7 @@ public class IDPassReader {
     private static native boolean generate_encryption_key(byte[] enc); // 32
     private static native boolean generate_secret_signature_keypair(byte[] pk, byte[] sk); // 64
     private native byte[] card_decrypt(long ctx, byte[] ecard, byte[] key);
-    private native float compare_face_template(byte[] face1, byte[] face2);
+    private static native float compare_face_template(byte[] face1, byte[] face2);
     private static native byte[] generate_root_certificate(byte[] secretKey);
     private static native byte[] generate_child_certificate(byte[] parentSecretKey, byte[] childSecretKey);
     private static native void add_revoked_key(byte[] pubkey);
@@ -457,7 +457,13 @@ public class IDPassReader {
     private native boolean verify_card_signature(long ctx, byte[] blob);
     //=========================================================
 
-    public byte[] getFacialDimensions(byte[] photo, boolean full)
+    public static float compareFaceTemplates(byte[] template1, byte[] template2)
+    {
+        float fdif = compare_face_template(template1, template2);
+        return fdif;
+    }
+
+    public byte[] getFaceTemplate(byte[] photo, boolean full)
     {
         if (full) {
             byte[] dimensions = compute_face_128d(ctx, photo);
