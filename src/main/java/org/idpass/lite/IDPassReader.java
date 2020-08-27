@@ -457,6 +457,17 @@ public class IDPassReader {
     private native boolean verify_card_signature(long ctx, byte[] blob);
     //=========================================================
 
+    public byte[] getFacialDimensions(byte[] photo, boolean full)
+    {
+        if (full) {
+            byte[] dimensions = compute_face_128d(ctx, photo);
+            return dimensions;
+        } else {
+            byte[] dimensions = compute_face_64d(ctx, photo);
+            return dimensions;
+        }
+    }
+
     public int verifyCardCertificate(IDPassCards fullcard)
     {
         return verify_card_certificate(ctx, fullcard.toByteArray());

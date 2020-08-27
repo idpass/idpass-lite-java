@@ -1023,4 +1023,15 @@ public class TestCases {
         String name = cardOriginal.getGivenName();
         assertEquals(name,"John");
     }
+
+    @Test
+    public void test_dlib_function() throws IOException, IDPassException
+    {
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+        IDPassReader reader = new IDPassReader("testdata/reader.cfg");
+        byte[] dimensions = reader.getFacialDimensions(photo, true);
+        assertTrue(dimensions.length == 128*4);
+        dimensions = reader.getFacialDimensions(photo, false);
+        assertTrue(dimensions.length == 64*2);
+    }
 }
