@@ -1043,4 +1043,67 @@ public class TestCases {
         assertTrue(fdif <= threshold);
 
     }
+
+    @Disabled("Used to generate test card for printing")
+    @Test
+    public void test_generate_florence_id() throws IDPassException, IOException {
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
+
+        Ident ident = Ident.newBuilder()
+                .setPhoto(ByteString.copyFrom(photo))
+                .setGivenName("MARION FLORENCE")
+                .setSurName("DUPONT")
+                .setPin("1234")
+                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPrivExtra(KV.newBuilder().setKey("ID#").setValue("SA437277"))
+                .build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
+
+        reader.setDetailsVisible(
+                IDPassReader.DETAIL_GIVENNAME |
+                IDPassReader.DETAIL_SURNAME);
+
+        Card card = reader.newCard(ident,m_certchain);
+        File outputfile = new File("florence_idpass.jpg");
+        ImageIO.write(card.asQRCode(), "jpg", outputfile);
+
+        reader.saveConfiguration("florence.cfg");
+    }
+
+    @Test
+    public void test_verify_florence_id() throws IDPassException, IOException, NotFoundException {
+        // Initialize reader
+        IDPassReader reader = new IDPassReader("testdata/florence.cfg");
+
+        File qrcodeId = new File(String.valueOf(Paths.get("testdata/florence_idpass.jpg")));
+        BufferedImage bufferedImage = ImageIO.read(qrcodeId);
+
+        // Read the QR code image
+        Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+
+        // hereafter, correct keyset is necessary to be able to operate on the card
+
+        cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
+        String name = cardOriginal.getGivenName();
+        assertEquals(name,"MARION FLORENCE");
+
+        File zoom1 = new File(String.valueOf(Paths.get("testdata/florence_idpass_zoom1.png")));
+        BufferedImage bizoom1 = ImageIO.read(zoom1);
+        Card card2 = reader.open(bizoom1); // presence of correct root certs is only up to here
+        card2.authenticateWithPIN("1234");
+        assertEquals("MARION FLORENCE", card2.getGivenName());
+
+        File zoom2 = new File(String.valueOf(Paths.get("testdata/florence_idpass_zoom2.png")));
+        BufferedImage bizoom2 = ImageIO.read(zoom2);
+        Card card3 = reader.open(bizoom2); // presence of correct root certs is only up to here
+        card2.authenticateWithPIN("1234");
+        assertEquals("MARION FLORENCE", card2.getGivenName());
+    }
+
 }
