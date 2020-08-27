@@ -32,7 +32,9 @@ import org.idpass.lite.exceptions.NotVerifiedException;
 import org.junit.jupiter.api.*;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.RenderedImage;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -1070,8 +1072,8 @@ public class TestCases {
                 IDPassReader.DETAIL_SURNAME);
 
         Card card = reader.newCard(ident,m_certchain);
-        File outputfile = new File("florence_idpass.jpg");
-        ImageIO.write(card.asQRCode(), "jpg", outputfile);
+        File outputfile = new File("florence_idpass.png");
+        ImageIO.write(card.asQRCode(), "png", outputfile);
 
         reader.saveConfiguration("florence.cfg");
     }
@@ -1106,4 +1108,42 @@ public class TestCases {
         assertEquals("MARION FLORENCE", card2.getGivenName());
     }
 
+    @Test
+    public void test_generate_zoomed_idpass() throws IOException, IDPassException, NotFoundException {
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
+
+        Ident ident = Ident.newBuilder()
+                .setPhoto(ByteString.copyFrom(photo))
+                .setGivenName("MARION FLORENCE")
+                .setSurName("DUPONT")
+                .setPin("1234")
+                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPrivExtra(KV.newBuilder().setKey("ID#").setValue("SA437277"))
+                .build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
+
+        reader.setDetailsVisible(
+                IDPassReader.DETAIL_GIVENNAME |
+                IDPassReader.DETAIL_SURNAME);
+
+        File tempFile = File.createTempFile("idpasslite", ".png");
+
+        Card card = reader.newCard(ident,m_certchain);
+
+        BufferedImage ri = card.asQRCode();
+        BufferedImage zoomed = IDPassHelper.ImgReplication(ri,3); // ~300 x 300 
+        ImageIO.write(zoomed, "png", tempFile);
+
+        BufferedImage qrimage = ImageIO.read(tempFile);
+        Card idcard = reader.open(qrimage); 
+        idcard.authenticateWithPIN("1234");
+        assertEquals("MARION FLORENCE", idcard.getGivenName());
+        tempFile.deleteOnExit();;
+    }
 }
