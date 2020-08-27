@@ -359,6 +359,57 @@ public class IDPassReader {
         return facediff;
     }
 
+    /**
+     * Set Dlib biometry dimension. True means,
+     * to use 128 floats with 4 bytes per float.
+     * False means to use 64 floats with 2 bytes
+     * per float.
+     * @param full
+     */
+
+    public void setDlibDimension(boolean full)
+    {
+        byte[] cmd = new byte[2];
+        cmd[0] = IOCTL_SET_FDIM;
+        cmd[1] = full ? (byte)1 : 0;
+
+        ioctl(ctx, cmd);
+    }
+
+    /**
+     * Get the context Dlib dimension.
+     * True means it uses Dlib's original 128 floats
+     * 4 bytes per float. False means, half of it
+     * which is 64 floats and 2 bytes per float.
+     * @return
+     */
+
+    public boolean getDlibDimension()
+    {
+        byte[] cmd = new byte[2];
+        cmd[0] = IOCTL_GET_FDIM;
+        ioctl(ctx, cmd);
+        return cmd[1] == 1 ? true : false;
+    }
+
+    /**
+     * Set QR code error correction code level.
+     * Valid levels are:
+     *    0 - ECC_LOW
+     *    1 - ECC_MEDIUM (default)
+     *    2 - ECC_QUARTILE
+     *    3 - ECC_HIGH
+     *
+     * @param eccLevel
+     */
+
+    public void setQRCodeECC(int eccLevel)
+    {
+        byte[] cmd = new byte[2];
+        cmd[0] = IOCTL_SET_ECC;
+        cmd[1] = (byte)eccLevel;
+        ioctl(ctx, cmd);
+    }
 
     public static void addRevokedKey(byte[] publicKey) {
 
