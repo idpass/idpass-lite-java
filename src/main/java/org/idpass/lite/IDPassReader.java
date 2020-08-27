@@ -213,17 +213,20 @@ public class IDPassReader {
 
         byte[] card;
 
+        try {
+            Result result = new MultiFormatReader().decode(bitmap);
+            Map m = result.getResultMetadata();
 
-        Result result = new MultiFormatReader().decode(bitmap);
-        Map m = result.getResultMetadata();
-
-        if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
-            List L = (List)m.get(ResultMetadataType.BYTE_SEGMENTS);
-            card = (byte[])L.get(0);
-        } else {
-            card = result.getText().getBytes();
+            if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
+                List L = (List) m.get(ResultMetadataType.BYTE_SEGMENTS);
+                card = (byte[]) L.get(0);
+            } else {
+                card = result.getText().getBytes();
+            }
+            return this.open(card);
+        } catch (com.google.zxing.NotFoundException e) {
+            return null;
         }
-        return this.open(card);
     }
 
     public Card open(BufferedImage bufferedImage, boolean skipCertificateVerfication)
