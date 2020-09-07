@@ -144,10 +144,10 @@ public class IDPassReader {
      * @throws IOException
      */
 
-    public IDPassReader(String configfile)
+    public IDPassReader(String alias, String configfile, String keystorePass)
             throws IDPassException, IOException {
 
-        byte[] cfg = Files.readAllBytes(Paths.get(configfile));
+        byte[] cfg = IDPassHelper.readKeyStoreEntry(alias, configfile, keystorePass);
         byteArrays bas = byteArrays.parseFrom(cfg);
         byteArray ba0 = bas.getVals(0); // keyset buf
         byteArray ba1 = bas.getVals(1); // rootcertificates buf
@@ -661,17 +661,13 @@ public class IDPassReader {
         return add_certificates(ctx, certs.toByteArray());
     }
 
-    public boolean saveConfiguration(String configfile) throws IOException {
-
+    public boolean saveConfiguration(String alias, String keystorefile, String keystorePass)
+    {
         byteArray ba1 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_keyset.toByteArray())).build();
         byteArray ba2 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_rootcertificates.toByteArray())).build();
 
         byteArrays bas = byteArrays.newBuilder().addVals(ba1).addVals(ba2).build();
 
-        FileOutputStream fos = new FileOutputStream(configfile);
-        fos.write(bas.toByteArray());
-        fos.close();
-
-        return true;
+        return IDPassHelper.addKeyStoreEntry(alias, bas.toByteArray(), keystorefile, keystorePass);
     }
 }

@@ -946,7 +946,7 @@ public class TestCases {
         File outputfile = new File("testqr2.jpg");
         ImageIO.write(card.asQRCode(), "jpg", outputfile);
 
-        reader.saveConfiguration("reader1.cfg");
+        reader.saveConfiguration("alias2","reader1.cfg", "changeit");
     }
 
     /*
@@ -1009,41 +1009,48 @@ public class TestCases {
     public void test_read_id_with_certificate_reader_config()
             throws IDPassException, IOException, NotFoundException
     {
-        // Initialize reader
-        IDPassReader reader = new IDPassReader("testdata/reader.cfg");
+        try {
+            // Initialize reader
+            IDPassReader reader = new IDPassReader("alias0", "testdata/reader.cfg.p12", "changeit");
 
-        File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
-        BufferedImage bufferedImage = ImageIO.read(qrcodeId);
+            File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
+            BufferedImage bufferedImage = ImageIO.read(qrcodeId);
 
-        // Read the QR code image
-        Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+            // Read the QR code image
+            Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
 
-        // hereafter, correct keyset is necessary to be able to operate on the card
+            // hereafter, correct keyset is necessary to be able to operate on the card
 
-        cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
-        String name = cardOriginal.getGivenName();
-        assertEquals(name,"John");
+            cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
+            String name = cardOriginal.getGivenName();
+            assertEquals(name, "John");
+        } catch (IDPassException e) {
+            assertFalse(true);
+        }
     }
 
     @Test
     public void test_dlib_function() throws IOException, IDPassException
     {
-        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
-        IDPassReader reader = new IDPassReader("testdata/reader.cfg");
-        byte[] dimensions = reader.getFaceTemplate(photo, true);
-        assertTrue(dimensions.length == 128*4);
-        dimensions = reader.getFaceTemplate(photo, false);
-        assertTrue(dimensions.length == 64*2);
+        try {
+            byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+            IDPassReader reader = new IDPassReader("alias0", "testdata/reader.cfg.p12", "changeit");
+            byte[] dimensions = reader.getFaceTemplate(photo, true);
+            assertTrue(dimensions.length == 128 * 4);
+            dimensions = reader.getFaceTemplate(photo, false);
+            assertTrue(dimensions.length == 64 * 2);
 
-        float threshold = reader.getFaceDiffThreshold();
+            float threshold = reader.getFaceDiffThreshold();
 
-        byte[] photo2 = Files.readAllBytes(Paths.get("testdata/manny2.bmp"));
+            byte[] photo2 = Files.readAllBytes(Paths.get("testdata/manny2.bmp"));
 
-        byte[] tmpl1 = reader.getFaceTemplate(photo, false);
-        byte[] tmpl2 = reader.getFaceTemplate(photo2, false);
-        float fdif = IDPassReader.compareFaceTemplates(tmpl1, tmpl2);
-        assertTrue(fdif <= threshold);
-
+            byte[] tmpl1 = reader.getFaceTemplate(photo, false);
+            byte[] tmpl2 = reader.getFaceTemplate(photo2, false);
+            float fdif = IDPassReader.compareFaceTemplates(tmpl1, tmpl2);
+            assertTrue(fdif <= threshold);
+        } catch (IDPassException e) {
+            assertFalse(true);
+        }
     }
 
     @Disabled("Used to generate test card for printing")
@@ -1075,13 +1082,13 @@ public class TestCases {
         File outputfile = new File("florence_idpass.png");
         ImageIO.write(card.asQRCode(), "png", outputfile);
 
-        reader.saveConfiguration("florence.cfg");
+        reader.saveConfiguration("alias0","florence.cfg", "changeit");
     }
 
     @Test
     public void test_verify_florence_id() throws IDPassException, IOException, NotFoundException {
         // Initialize reader
-        IDPassReader reader = new IDPassReader("testdata/florence.cfg");
+        IDPassReader reader = new IDPassReader("alias1","testdata/florence.cfg.p12","changeit");
 
         File qrcodeId = new File(String.valueOf(Paths.get("testdata/florence_idpass.jpg")));
         BufferedImage bufferedImage = ImageIO.read(qrcodeId);
