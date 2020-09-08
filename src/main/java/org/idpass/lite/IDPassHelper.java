@@ -142,7 +142,7 @@ public class IDPassHelper {
      * @param keystorepath Full file path of the keystore in the file system
      * @param password Password needed to read/write into the keystore file
      * @return Returns byte[] array of an IDPASS reader's needed security configuration
-     * @throws IDPassException
+     * @throws IDPassException Throws custom exception
      */
 
     public static byte[] readKeyStoreEntry(String alias, String keystorepath, String password)

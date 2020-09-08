@@ -139,9 +139,11 @@ public class IDPassReader {
     /**
      * Initializes a reader using preset configuration of keyset
      * and root certificates from a configuration file
-     * @param configfile
-     * @throws IDPassException
-     * @throws IOException
+     * @param alias The key name to get the value configuration from the configuration file
+     * @param configfile This is a PKCS12 file to store reader configuration under a key name
+     * @param keystorePass Password to read PKCS 12 file
+     * @throws IDPassException Custom exception
+     * @throws IOException Java exception
      */
 
     public IDPassReader(String alias, String configfile, String keystorePass)
@@ -367,7 +369,8 @@ public class IDPassReader {
      * to use 128 floats with 4 bytes per float.
      * False means to use 64 floats with 2 bytes
      * per float.
-     * @param full
+     * @param full If true, then facial template is 128 floats with 4 bytes per float.
+     * Otherwise, it is 64 floats with 2 bytes per float.
      */
 
     public void setDlibDimension(boolean full)
@@ -384,7 +387,8 @@ public class IDPassReader {
      * True means it uses Dlib's original 128 floats
      * 4 bytes per float. False means, half of it
      * which is 64 floats and 2 bytes per float.
-     * @return
+     * @return Returns true of facial biometry is represented in full 128 floats 4 bytes per float.
+     * Otherwise, facial biometry is represented in half which is 64 floats 2 bytes per float.
      */
 
     public boolean getDlibDimension()
@@ -403,7 +407,7 @@ public class IDPassReader {
      *    2 - ECC_QUARTILE
      *    3 - ECC_HIGH
      *
-     * @param eccLevel
+     * @param eccLevel Any of valid levels of QR code ECC
      */
 
     public void setQRCodeECC(int eccLevel)
