@@ -1115,6 +1115,7 @@ public class TestCases {
         assertEquals("MARION FLORENCE", card2.getGivenName());
     }
 
+    @Disabled
     @Test
     public void test_generate_zoomed_idpass() throws IOException, IDPassException, NotFoundException {
 

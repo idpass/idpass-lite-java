@@ -581,7 +581,8 @@ public class IDPassReader {
             }
         }
 
-        return qrcode;
+        BufferedImage zoomed = IDPassHelper.ImgReplication(qrcode,3); // ~300 x 300
+        return zoomed;
     }
 
     /**
