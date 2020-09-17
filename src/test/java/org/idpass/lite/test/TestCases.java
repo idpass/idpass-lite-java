@@ -1157,7 +1157,7 @@ public class TestCases {
     }
 
     @Test
-    public void test_generate_svg() throws IDPassException, IOException {
+    public void test_generate_svg() throws IDPassException, IOException, NotFoundException {
 
         byte[] photo = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
 
@@ -1187,5 +1187,19 @@ public class TestCases {
         //File outputfile = new File("florence_idpass.svg");
         //Files.write(outputfile.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
         //reader.saveConfiguration("alias0","florence.cfg", "changeit");
+
+        // Load SVG to BufferedImage and feed image into reader
+        // to create card2
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8);
+        bos.write(buf, 0, buf.length);
+
+        InputStream inputStream = new ByteArrayInputStream(bos.toByteArray());
+        BufferedImage bi = ImageIO.read(inputStream);
+
+        Card card2 = reader.open(bi, true);
+        assertNotNull(card2);
+        assertArrayEquals(card.asBytes(), card2.asBytes());
+        assertTrue(card2.getGivenName().equals("MARION FLORENCE"));
     }
 }

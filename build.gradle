@@ -54,6 +54,14 @@ dependencies {
     implementation 'com.google.zxing:javase:3.4.0'
     implementation 'at.favre.lib:bytes:1.3.0'
     implementation files('src/main/java/proto/idpasslite.proto.jar')
+
+    // These jars only needed by TestCases.java for unit testing purposes only
+    // will not be a transitive dependency in client apps. It is used to convert
+    // PNG to SVG as an additional test case
+    testImplementation group: 'org.apache.xmlgraphics', name: 'batik-transcoder', version: '1.13'
+    testRuntimeOnly group: 'org.apache.xmlgraphics', name: 'batik-transcoder', version: '1.13'
+    testImplementation group: 'com.twelvemonkeys.imageio', name: 'imageio-batik', version: '3.6'
+    testRuntimeOnly group: 'com.twelvemonkeys.imageio', name: 'imageio-batik', version: '3.6'
 }
 
 // Tasks
