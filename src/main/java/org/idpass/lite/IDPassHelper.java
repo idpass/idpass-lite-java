@@ -74,21 +74,6 @@ public class IDPassHelper {
         return ret;
     }
 
-    public static BufferedImage ImgReplication(BufferedImage image, int n) {
-
-        int w = n * image.getWidth();
-        int h = n * image.getHeight();
-
-        BufferedImage enlargedImage =
-                new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-
-        for (int y=0; y < h; ++y)
-            for (int x=0; x < w; ++x)
-                enlargedImage.setRGB(x, y, image.getRGB(x/n, y/n));
-
-        return enlargedImage;
-    }
-
     /**
      * Adds a key/value pair into a PKCS12 keystore file. The key name is identified by
      * alias and the value is in keybuf. The keybuf byte array is a custom byte array

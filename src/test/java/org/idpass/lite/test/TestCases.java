@@ -1116,9 +1116,8 @@ public class TestCases {
         assertEquals("MARION FLORENCE", card2.getGivenName());
     }
 
-    @Disabled
     @Test
-    public void test_generate_zoomed_idpass() throws IOException, IDPassException, NotFoundException {
+    public void test_generate_scaled_idpass() throws IOException, IDPassException, NotFoundException {
 
         byte[] photo = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
 
@@ -1146,14 +1145,14 @@ public class TestCases {
         Card card = reader.newCard(ident,m_certchain);
 
         BufferedImage ri = card.asQRCode();
-        BufferedImage zoomed = IDPassHelper.ImgReplication(ri,3); // ~300 x 300 
-        ImageIO.write(zoomed, "png", tempFile);
+        //BufferedImage zoomed = IDPassHelper.ImgReplication(ri,3); // ~300 x 300
+        ImageIO.write(ri, "png", tempFile);
 
         BufferedImage qrimage = ImageIO.read(tempFile);
         Card idcard = reader.open(qrimage); 
         idcard.authenticateWithPIN("1234");
         assertEquals("MARION FLORENCE", idcard.getGivenName());
-        tempFile.deleteOnExit();;
+        tempFile.delete();
     }
 
     @Test

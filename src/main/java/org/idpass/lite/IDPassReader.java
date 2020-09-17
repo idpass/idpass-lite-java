@@ -566,23 +566,51 @@ public class IDPassReader {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
 
         int qrpixels_len = qrpixels.length() - 1; // always substract by 1
-        int qrsidelen = (int) Math.sqrt(qrpixels_len);
+        double sidelen = Math.sqrt(qrpixels_len);
+        if ((sidelen - Math.floor(sidelen)) != 0) {
+            // if qrpixels_len is not a perfect
+            // square number, then something is wrong
+            return null;
+        }
 
-        BufferedImage qrcode = new BufferedImage(qrsidelen,
-                qrsidelen, BufferedImage.TYPE_INT_RGB);
+        // https://www.qrcode.com/en/howto/code.html
+        int margin = 4;
+        int scale = 3;
+        int qrsidelen = (int) sidelen;
+        int scaledSizeLen = qrsidelen * scale;
+        boolean flag = false;
 
-        for (int x=0; x< qrsidelen; x++) {
-            for (int y=0; y < qrsidelen; y++) {
-                if (qrpixels.get(x * qrsidelen + y)) {
-                    qrcode.setRGB(x, y, Color.BLACK.getRGB());
+        BufferedImage qrcode = new BufferedImage(
+                scaledSizeLen + margin*2,
+                scaledSizeLen + margin*2,
+                BufferedImage.TYPE_INT_RGB);
+
+        int qrHeight = qrcode.getHeight();
+        int qrWidth = qrcode.getWidth();
+
+        for (int x = 0, idx = 0; x < qrWidth; x++) {
+            for (int y = 0; y < qrHeight; y++) {
+                if (x < margin || y < margin ||
+                    x >= (qrWidth - margin) || y >= (qrHeight - margin))
+                {
+                    qrcode.setRGB(x, y, Color.WHITE.getRGB());
+                    continue;
                 } else {
-                    qrcode.setRGB(x, y,Color.WHITE.getRGB());
+                    if ((y-margin) % scale == 0) {
+                        flag = qrpixels.get(idx++);
+                    }
+                    qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() : Color.WHITE.getRGB());
+                }
+            }
+
+            if (x >= margin || x < (qrWidth - margin)) {
+                if ((x-margin) == 0 || (x-margin) % scale != 0) {
+                    idx = ((x-margin) / scale) * qrsidelen;
                 }
             }
         }
 
-        BufferedImage zoomed = IDPassHelper.ImgReplication(qrcode,3); // ~300 x 300
-        return zoomed;
+        return qrcode;
     }
 
     /**
