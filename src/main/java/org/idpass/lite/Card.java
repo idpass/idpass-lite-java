@@ -266,6 +266,16 @@ public class Card {
     }
 
     /**
+     * Returns the SVG format of the QR code representation of
+     * the id card.
+     * @return String An XML SVG vector graphics format
+     */
+
+    public String asQRCodeSVG() {
+        return this.reader.getQRCodeAsSVG(this.cardAsByte);
+    }
+
+    /**
      *  Check if access conditions are satisfied
      * @throws NotVerifiedException custom exception
      */

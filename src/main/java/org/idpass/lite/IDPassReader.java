@@ -586,6 +586,46 @@ public class IDPassReader {
     }
 
     /**
+     * Returns an XML SVG format QR code representation of buf.
+     * @param buf The binary blob to be encoded into a QR code.
+     * @return Returns an XML SVG vector graphics format
+     */
+
+    protected String getQRCodeAsSVG(byte[] buf)
+    {
+        BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
+
+        int qrpixels_len = qrpixels.length() - 1; // always substract by 1
+        int qrsidelen = (int) Math.sqrt(qrpixels_len);
+
+        int size = qrsidelen;
+        int border = 3;
+
+        StringBuilder sb = new StringBuilder()
+                .append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+                .append("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n")
+                .append(String.format("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" viewBox=\"0 0 %1$d %1$d\" stroke=\"none\">\n",
+                        size + border * 2))
+                .append("\t<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>\n")
+                .append("\t<path d=\"");
+
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if (qrpixels.get(x*qrsidelen + y)) {
+                    if (x != 0 || y != 0) {
+                        sb.append(" ");
+                    }
+                    sb.append(String.format("M%d,%dh1v1h-1z", x + border, y + border));
+                }
+            }
+        }
+
+        return sb.append("\" fill=\"#000000\"/>\n")
+                 .append("</svg>\n")
+                 .toString();
+    }
+
+    /**
      * Helper method for quick generation of needed encryption key
      * @return 32 bytes key
      */

@@ -36,6 +36,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -1153,5 +1154,38 @@ public class TestCases {
         idcard.authenticateWithPIN("1234");
         assertEquals("MARION FLORENCE", idcard.getGivenName());
         tempFile.deleteOnExit();;
+    }
+
+    @Test
+    public void test_generate_svg() throws IDPassException, IOException {
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
+
+        Ident ident = Ident.newBuilder()
+                .setPhoto(ByteString.copyFrom(photo))
+                .setGivenName("MARION FLORENCE")
+                .setSurName("DUPONT")
+                .setPin("1234")
+                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPrivExtra(KV.newBuilder().setKey("ID#").setValue("SA437277"))
+                .build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
+
+        reader.setDetailsVisible(
+                IDPassReader.DETAIL_GIVENNAME |
+                IDPassReader.DETAIL_SURNAME);
+
+        Card card = reader.newCard(ident,m_certchain);
+        String xml =  card.asQRCodeSVG();
+        assertTrue(xml.length() > 0);
+
+        //File outputfile = new File("florence_idpass.svg");
+        //Files.write(outputfile.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
+        //reader.saveConfiguration("alias0","florence.cfg", "changeit");
     }
 }
