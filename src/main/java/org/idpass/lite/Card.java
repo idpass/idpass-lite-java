@@ -286,6 +286,16 @@ public class Card {
     }
 
     /**
+     * Return identity extra information.
+     * @return Key/value pair of additional information
+     */
+
+    public HashMap<String, String> getCardExtras()
+    {
+        return cardExtras;
+    }
+
+    /**
      * To update member fields
      */
     private void updateDetails() {

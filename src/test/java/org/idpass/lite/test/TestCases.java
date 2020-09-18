@@ -40,6 +40,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashMap;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestCases {
@@ -1093,39 +1095,108 @@ public class TestCases {
         reader.saveConfiguration("alias0","florence.cfg", "changeit");
     }
 
-    @Disabled("enable this when you have demokeys.cfg.p12")
     @Test
-    public void test_verify_florence_id() throws IDPassException, IOException, NotFoundException {
-        // Initialize reader
+    public void test_verify_florence_id()
+        throws IDPassException, IOException, NotFoundException
+    {
+        // Let's load 31 other almost similar looking photo against Florence
+        byte[][] almost = new byte[31][];
+        for (int i = 0;i < 31; ++i) {
+            almost[i] = Files.readAllBytes(
+                Paths.get(String.format("testdata/faces/almost%d.jpg", i)));
+        }
+
+        // photo1 and photo3 are Florence personal photos
+        byte[] photo1 = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg")); // high res
+        byte[] photo3 = Files.readAllBytes(Paths.get("testdata/florence.jpg")); // low res
+        String ssNumber = "SS Number";
+
+        // First, we initialize the reader with the corresponding issuing keys that issued the QR code
+        // ID florence_idpass.png card
         IDPassReader reader = new IDPassReader("alias0","testdata/demokeys.cfg.p12","changeit");
+        reader.setFaceDiffThreshold(0.2f);
 
-        File qrcodeId = new File(String.valueOf(Paths.get("testdata/florence_idpass.png")));
-        BufferedImage bufferedImage = ImageIO.read(qrcodeId);
+        // Next, we prepare the QR code for reading. This is just a standard Java image load
+        BufferedImage qrCodeImage = ImageIO.read(
+            new File(String.valueOf(Paths.get("testdata/florence_idpass.png"))));
 
-        // Read the QR code image
-        Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+        // The reader scans the card to check if it is a QR code. The QR code public area
+        // is read out and if there is presence of certificate(s), then it is validated against that
+        // of the root certificate(s) of the reader. If the certificate validates, the reader::open()
+        // method returns a Card. The card's public region should be publicly visible. Whereas,
+        // its private region shall only be visible after successfull authentication.
+        Card card0 = reader.open(qrCodeImage); // presence of correct root certs is only up to here
 
-        // hereafter, correct keyset is necessary to be able to operate on the card
+        assertEquals("MARION FLORENCE", card0.getGivenName());
+        assertEquals("DUPONT", card0.getSurname());
 
-        byte[] photo1 = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg"));
-        byte[] photo2 = Files.readAllBytes(Paths.get("testdata/brad.jpg"));
-        byte[] photo3 = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
-        //cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
-        cardOriginal.authenticateWithFace(photo1);
-        String name = cardOriginal.getGivenName();
-        assertEquals(name,"MARION FLORENCE");
+        // After opening but prior to authentication, ssNumber field is not visible
+        HashMap<String, String> card0Info = card0.getCardExtras();
+        assertFalse(card0Info.containsKey(ssNumber));
 
-        File zoom1 = new File(String.valueOf(Paths.get("testdata/florence_idpass.png")));
-        BufferedImage bizoom1 = ImageIO.read(zoom1);
-        Card card2 = reader.open(bizoom1); // presence of correct root certs is only up to here
-        cardOriginal.authenticateWithFace(photo3);
-        assertEquals("MARION FLORENCE", card2.getGivenName());
+        // Other 31 similar-looking photos, but not Florence, should not be able to authenticate.
+        // This part requires the appropriate reader threshold set here to 0.2.
+        for (int i = 0; i < almost.length; i++) {
+            byte[] otherPhoto = almost[i];
+            assertThrows(IDPassException.class,
+                () -> card0.authenticateWithFace(otherPhoto));
+        }
 
-        File zoom2 = new File(String.valueOf(Paths.get("testdata/florence_idpass.png")));
-        BufferedImage bizoom2 = ImageIO.read(zoom2);
-        Card card3 = reader.open(bizoom2); // presence of correct root certs is only up to here
-        card2.authenticateWithPIN("1234");
-        assertEquals("MARION FLORENCE", card2.getGivenName());
+        // Because, card0 is still not authenticated, ssNumber is still not visible
+        //card0Info = card0.getCardExtras();
+        assertFalse(card0Info.containsKey(ssNumber));
+
+        // Now let us successfully authenticate using Florence's lower resolution photo
+        card0.authenticateWithFace(photo3);
+
+        // Once authenticated, the ssNumber field in the card shall be visible
+        assertEquals("MARION FLORENCE",card0.getGivenName());
+        assertTrue(card0Info.containsKey(ssNumber) &&
+            card0Info.get(ssNumber).equals("2 85 01 75 116 001 42"));
+
+        // The card can also be verified by pin code. We scan again the qrCodeImage
+        // to return another card3 and authenticate against card3 via pin code
+        Card card3 = reader.open(qrCodeImage);
+        HashMap<String, String> card3Info = card3.getCardExtras();
+
+        // Prior to authentication, ssNumber shall not be visible
+        assertFalse(card3Info.containsKey(ssNumber));
+
+        // Successful pin code authentication on card3, shall make visible
+        // the ssNumber field
+        card3.authenticateWithPIN("1234");
+        assertTrue(card3Info.containsKey(ssNumber) &&
+                card3Info.get(ssNumber).equals("2 85 01 75 116 001 42"));
+
+        // Let us read the same QR code ID using a reader that is initialized with different keys
+        IDPassReader reader2 = new IDPassReader("alias0","testdata/reader.cfg.p12","changeit");
+
+        // Because reader2 has different key configuration,
+        // then it is not able to render (or open) the QR code ID into a card
+        assertThrows(InvalidCardException.class,
+            () -> { Card card4 = reader2.open(qrCodeImage); });
+
+        // However, reader2 can open the card (or render the QR code into a card)
+        // if the reader skips certificate verification
+        Card card5 = reader2.open(qrCodeImage, true);
+
+        // As usual, when card is opened (but not yet authenticated)
+        // the card's public fields are always visible
+        assertEquals("MARION FLORENCE", card5.getGivenName());
+        assertEquals("DUPONT", card5.getSurname());
+
+        // But, without being authenticated, the ssNumber is not visible
+        HashMap<String, String> card5Info = card5.getCardExtras();
+        assertFalse(card5Info.containsKey(ssNumber));
+
+        // Because the reader2 has a different key configuration,
+        // no successfull authentication is possible using reader2,
+        // even if matching face is presented.
+        assertThrows(CardVerificationException.class,
+            () -> card5.authenticateWithFace(photo1));
+
+        // So using reader2, ssNumber is never visible
+        assertFalse(card5Info.containsKey(ssNumber));
     }
 
     @Test
