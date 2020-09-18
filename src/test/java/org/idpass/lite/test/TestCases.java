@@ -1216,7 +1216,6 @@ public class TestCases {
         assertTrue(card2.getGivenName().equals("MARION FLORENCE"));
     }
 
-    @Disabled
     @Test
     public void test_jgenerate_florence_id() throws IDPassException, IOException {
 
@@ -1236,22 +1235,22 @@ public class TestCases {
                 .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
-        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
-        reader.setRootKey(m_rootkey);
-        //IDPassReader reader = new IDPassReader("alias0","test/demokeys.cfg.p12","changeit");
+        IDPassReader reader = new IDPassReader("alias0","testdata/demokeys.cfg.p12","changeit");
 
         reader.setDetailsVisible(
                 IDPassReader.DETAIL_GIVENNAME |
                 IDPassReader.DETAIL_SURNAME |
                 IDPassReader.DETAIL_DATEOFBIRTH);
 
-        Card card = reader.newCard(ident,m_certchain);
+        Certificate childcert = IDPassReader.generateChildCertificate(reader.getRootKey(),
+                publicVerificationKey);
+        Certificates certchain = Certificates.newBuilder().addCert(childcert).build();
+
+        Card card = reader.newCard(ident,certchain);
         File outputfile = new File("florence_idpass.png");
         ImageIO.write(card.asQRCode(), "png", outputfile);
 
         File outputfile3 = new File("florence_idpass.svg");
         Files.write(outputfile3.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
-
-        reader.saveConfiguration("alias0","demokeys.cfg.p12", "changeit");
     }
 }

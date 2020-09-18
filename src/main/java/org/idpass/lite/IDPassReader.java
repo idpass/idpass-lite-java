@@ -129,6 +129,11 @@ public class IDPassReader {
         m_rootkey = rootkey.clone();
     }
 
+    public byte[] getRootKey()
+    {
+        return m_rootkey.clone();
+    }
+
     /**
      * Instantiates an instance of the library with additional verification keys
      * @param ks The cryptographic key settings
