@@ -1077,21 +1077,29 @@ public class TestCases {
 
         reader.setDetailsVisible(
                 IDPassReader.DETAIL_GIVENNAME |
-                IDPassReader.DETAIL_SURNAME);
+                IDPassReader.DETAIL_SURNAME |
+                IDPassReader.DETAIL_DATEOFBIRTH |
+                IDPassReader.DETAIL_PLACEOFBIRTH);
 
         Card card = reader.newCard(ident,m_certchain);
         File outputfile = new File("florence_idpass.png");
         ImageIO.write(card.asQRCode(), "png", outputfile);
 
+        File outputfile3 = new File("florence_idpass.svg");
+        Files.write(outputfile3.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
+        //reader.saveConfiguration("alias0","florence.cfg", "changeit");
+
+
         reader.saveConfiguration("alias0","florence.cfg", "changeit");
     }
 
+    @Disabled("enable this when you have demokeys.cfg.p12")
     @Test
     public void test_verify_florence_id() throws IDPassException, IOException, NotFoundException {
         // Initialize reader
-        IDPassReader reader = new IDPassReader("alias1","testdata/florence.cfg.p12","changeit");
+        IDPassReader reader = new IDPassReader("alias0","testdata/demokeys.cfg.p12","changeit");
 
-        File qrcodeId = new File(String.valueOf(Paths.get("testdata/florence_idpass.jpg")));
+        File qrcodeId = new File(String.valueOf(Paths.get("testdata/florence_idpass.png")));
         BufferedImage bufferedImage = ImageIO.read(qrcodeId);
 
         // Read the QR code image
@@ -1099,17 +1107,21 @@ public class TestCases {
 
         // hereafter, correct keyset is necessary to be able to operate on the card
 
-        cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
+        byte[] photo1 = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg"));
+        byte[] photo2 = Files.readAllBytes(Paths.get("testdata/brad.jpg"));
+        byte[] photo3 = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
+        //cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
+        cardOriginal.authenticateWithFace(photo1);
         String name = cardOriginal.getGivenName();
         assertEquals(name,"MARION FLORENCE");
 
-        File zoom1 = new File(String.valueOf(Paths.get("testdata/florence_idpass_zoom1.png")));
+        File zoom1 = new File(String.valueOf(Paths.get("testdata/florence_idpass.png")));
         BufferedImage bizoom1 = ImageIO.read(zoom1);
         Card card2 = reader.open(bizoom1); // presence of correct root certs is only up to here
-        card2.authenticateWithPIN("1234");
+        cardOriginal.authenticateWithFace(photo3);
         assertEquals("MARION FLORENCE", card2.getGivenName());
 
-        File zoom2 = new File(String.valueOf(Paths.get("testdata/florence_idpass_zoom2.png")));
+        File zoom2 = new File(String.valueOf(Paths.get("testdata/florence_idpass.png")));
         BufferedImage bizoom2 = ImageIO.read(zoom2);
         Card card3 = reader.open(bizoom2); // presence of correct root certs is only up to here
         card2.authenticateWithPIN("1234");
@@ -1138,7 +1150,9 @@ public class TestCases {
 
         reader.setDetailsVisible(
                 IDPassReader.DETAIL_GIVENNAME |
-                IDPassReader.DETAIL_SURNAME);
+                IDPassReader.DETAIL_SURNAME |
+                IDPassReader.DETAIL_DATEOFBIRTH |
+                IDPassReader.DETAIL_PLACEOFBIRTH);
 
         File tempFile = File.createTempFile("idpasslite", ".png");
 
@@ -1158,7 +1172,7 @@ public class TestCases {
     @Test
     public void test_generate_svg() throws IDPassException, IOException, NotFoundException {
 
-        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg"));
 
         Ident ident = Ident.newBuilder()
                 .setPhoto(ByteString.copyFrom(photo))
@@ -1200,5 +1214,44 @@ public class TestCases {
         assertNotNull(card2);
         assertArrayEquals(card.asBytes(), card2.asBytes());
         assertTrue(card2.getGivenName().equals("MARION FLORENCE"));
+    }
+
+    @Disabled
+    @Test
+    public void test_jgenerate_florence_id() throws IDPassException, IOException {
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg"));
+
+        Ident ident = Ident.newBuilder()
+                .setPhoto(ByteString.copyFrom(photo))
+                .setGivenName("MARION FLORENCE")
+                .setSurName("DUPONT")
+                .setPin("1234")
+                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+                .build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
+        reader.setRootKey(m_rootkey);
+        //IDPassReader reader = new IDPassReader("alias0","test/demokeys.cfg.p12","changeit");
+
+        reader.setDetailsVisible(
+                IDPassReader.DETAIL_GIVENNAME |
+                IDPassReader.DETAIL_SURNAME |
+                IDPassReader.DETAIL_DATEOFBIRTH);
+
+        Card card = reader.newCard(ident,m_certchain);
+        File outputfile = new File("florence_idpass.png");
+        ImageIO.write(card.asQRCode(), "png", outputfile);
+
+        File outputfile3 = new File("florence_idpass.svg");
+        Files.write(outputfile3.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
+
+        reader.saveConfiguration("alias0","demokeys.cfg.p12", "changeit");
     }
 }

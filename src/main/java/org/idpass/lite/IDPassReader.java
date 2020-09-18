@@ -106,6 +106,7 @@ public class IDPassReader {
     private long ctx; // handle to library
     protected KeySet m_keyset;
     protected Certificates m_rootcertificates;
+    byte[] m_rootkey = new byte[0];
 
     static {
         try {
@@ -115,6 +116,17 @@ public class IDPassReader {
             //TODO: Log the error
             e.printStackTrace();
         }
+    }
+
+    /**
+     * An optional method to add the root key. For now, only one
+     * root key.
+     * @param rootkey The secret ED25519 key of m_rootcertificates
+     */
+
+    public void setRootKey(byte[] rootkey)
+    {
+        m_rootkey = rootkey.clone();
     }
 
     /**
@@ -153,6 +165,12 @@ public class IDPassReader {
         byteArrays bas = byteArrays.parseFrom(cfg);
         byteArray ba0 = bas.getVals(0); // keyset buf
         byteArray ba1 = bas.getVals(1); // rootcertificates buf
+        try {
+            byteArray ba2 = bas.getVals(2); // rootkey buf
+            m_rootkey = ba2.getVal().toByteArray();
+        } catch (IndexOutOfBoundsException e) {
+
+        }
 
         m_keyset = KeySet.parseFrom(ba0.getVal().toByteArray());
         m_rootcertificates = Certificates.parseFrom(ba1.getVal().toByteArray());
@@ -738,8 +756,13 @@ public class IDPassReader {
     {
         byteArray ba1 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_keyset.toByteArray())).build();
         byteArray ba2 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_rootcertificates.toByteArray())).build();
+        byteArray ba3 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_rootkey)).build();
 
-        byteArrays bas = byteArrays.newBuilder().addVals(ba1).addVals(ba2).build();
+        byteArrays bas = byteArrays.newBuilder()
+                .addVals(ba1)
+                .addVals(ba2)
+                .addVals(ba3)
+                .build();
 
         return IDPassHelper.addKeyStoreEntry(alias, bas.toByteArray(), keystorefile, keystorePass);
     }
