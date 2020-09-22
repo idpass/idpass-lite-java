@@ -21,7 +21,6 @@ package org.idpass.lite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
-import org.api.proto.byteArray;
 import org.idpass.lite.proto.CardDetails;
 import org.idpass.lite.proto.IDPassCard;
 import org.idpass.lite.proto.IDPassCards;
@@ -33,9 +32,12 @@ import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.Date;
 
@@ -402,5 +404,43 @@ public class Card {
         checkIsAuthenticated();
         boolean flag = reader.verifySignature(data, signature, pubkey);
         return flag;
+    }
+
+    public boolean saveToSVG(String filename)
+    {
+        File outfile = new File(filename);
+        try {
+            Files.write(outfile.toPath(),
+                asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean saveToPNG(String filename)
+    {
+        File outfile = new File(filename);
+        try {
+            ImageIO.write(asQRCode(), "png", outfile);
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
+    }
+
+
+    public boolean saveToJPG(String filename)
+    {
+        File outfile = new File(filename);
+        try {
+            ImageIO.write(asQRCode(), "jpg", outfile);
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
     }
 }

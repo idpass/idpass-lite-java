@@ -19,7 +19,6 @@
 package org.idpass.lite.test;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.zxing.NotFoundException;
 import org.api.proto.*;
 import org.idpass.lite.IDPassHelper;
@@ -32,15 +31,12 @@ import org.idpass.lite.exceptions.NotVerifiedException;
 import org.junit.jupiter.api.*;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.RenderedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -88,7 +84,7 @@ public class TestCases {
     public TestCases() throws IDPassException {
     }
 
-    private Ident.Builder newIdentBuilder() throws IDPassException, IOException {
+    private Ident.Builder newIdentBuilder() {
         return Ident.newBuilder()
                 .setGivenName("John")
                 .setSurName("Doe")
@@ -291,7 +287,7 @@ public class TestCases {
 
     @Test
     public void testcreateCardWithCertificates()
-            throws IOException, IDPassException, NotVerifiedException
+            throws IOException, IDPassException
     {
         byte[] signer0 = IDPassReader.generateSecretSignatureKey();
         byte[] signer1 = IDPassReader.generateSecretSignatureKey();
@@ -587,30 +583,6 @@ public class TestCases {
         assertArrayEquals(card.asBytes(), readCard.asBytes());
     }
 
-    @Disabled("still checking")
-    @Test
-    public void testGetQRCodeFromPhoto()
-            throws IOException, IDPassException, NotFoundException
-    {
-        IDPassReader reader = new IDPassReader(m_keyset, null);
-
-        File originalQrCode = new File(String.valueOf(Paths.get("testdata/new_qrcode.bmp")));
-        BufferedImage bufferedImage = ImageIO.read(originalQrCode);
-        Card cardOriginal = reader.open(bufferedImage);
-
-        //File photoQrCode = new File(String.valueOf(Paths.get("testdata/photo_qrcode1.jpg")));
-        File photoQrCode = new File(String.valueOf(Paths.get("testdata/new_qrcode.bmp")));
-        bufferedImage = ImageIO.read(photoQrCode);
-        Card cardPhoto = reader.open(bufferedImage);
-
-        File binary = new File(String.valueOf(Paths.get("testdata/new_qrcode.dat")));
-        Card cardBin = reader.open(Files.readAllBytes(binary.toPath()));
-
-        assertArrayEquals(cardOriginal.asBytes(), cardPhoto.asBytes());
-        assertArrayEquals(cardBin.asBytes(), cardPhoto.asBytes());
-    }
-
-
     @Test
     public void testCardWrongPublicSignatureVerification()
             throws IOException,  IDPassException {
@@ -874,7 +846,7 @@ public class TestCases {
     }
 
     @Test
-    public void testRevokedCertificate() throws InvalidProtocolBufferException, IDPassException
+    public void testRevokedCertificate() throws IDPassException
     {
         /* Prepare the key set */
 
@@ -949,7 +921,13 @@ public class TestCases {
         File outputfile = new File("testqr2.jpg");
         ImageIO.write(card.asQRCode(), "jpg", outputfile);
 
-        reader.saveConfiguration("alias2","reader1.cfg", "changeit");
+        reader.saveConfiguration("test", "reader1.cfg", "changeit");
+
+        IDPassHelper.writeKeyStoreEntry(
+            "rootcertificatesprivatekeys","reader1.cfg.p12", "changeit", m_rootkey);
+
+        IDPassHelper.writeKeyStoreEntry(
+            "intermedcertificatesprivatekeys","reader1.cfg.p12", "changeit", signaturekey);
     }
 
     /*
@@ -1010,11 +988,11 @@ public class TestCases {
 
     @Test
     public void test_read_id_with_certificate_reader_config()
-            throws IDPassException, IOException, NotFoundException
+            throws IOException, NotFoundException
     {
         try {
             // Initialize reader
-            IDPassReader reader = new IDPassReader("alias0", "testdata/reader.cfg.p12", "changeit");
+            IDPassReader reader = new IDPassReader("default", "testdata/reader.cfg.p12", "changeit");
 
             File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
             BufferedImage bufferedImage = ImageIO.read(qrcodeId);
@@ -1033,11 +1011,11 @@ public class TestCases {
     }
 
     @Test
-    public void test_dlib_function() throws IOException, IDPassException
+    public void test_dlib_function() throws IOException
     {
         try {
             byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
-            IDPassReader reader = new IDPassReader("alias0", "testdata/reader.cfg.p12", "changeit");
+            IDPassReader reader = new IDPassReader("default", "testdata/reader.cfg.p12", "changeit");
             byte[] dimensions = reader.getFaceTemplate(photo, true);
             assertTrue(dimensions.length == 128 * 4);
             dimensions = reader.getFaceTemplate(photo, false);
@@ -1056,45 +1034,6 @@ public class TestCases {
         }
     }
 
-    @Disabled("Used to generate test card for printing")
-    @Test
-    public void test_generate_florence_id() throws IDPassException, IOException {
-
-        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence.jpg"));
-
-        Ident ident = Ident.newBuilder()
-                .setPhoto(ByteString.copyFrom(photo))
-                .setGivenName("MARION FLORENCE")
-                .setSurName("DUPONT")
-                .setPin("1234")
-                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
-                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
-                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
-                .addPrivExtra(KV.newBuilder().setKey("ID#").setValue("SA437277"))
-                .build();
-
-        IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
-
-        reader.setDetailsVisible(
-                IDPassReader.DETAIL_GIVENNAME |
-                IDPassReader.DETAIL_SURNAME |
-                IDPassReader.DETAIL_DATEOFBIRTH |
-                IDPassReader.DETAIL_PLACEOFBIRTH);
-
-        Card card = reader.newCard(ident,m_certchain);
-        File outputfile = new File("florence_idpass.png");
-        ImageIO.write(card.asQRCode(), "png", outputfile);
-
-        File outputfile3 = new File("florence_idpass.svg");
-        Files.write(outputfile3.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
-        //reader.saveConfiguration("alias0","florence.cfg", "changeit");
-
-
-        reader.saveConfiguration("alias0","florence.cfg", "changeit");
-    }
-
     @Test
     public void test_verify_florence_id()
         throws IDPassException, IOException, NotFoundException
@@ -1108,7 +1047,7 @@ public class TestCases {
 
         // First, we initialize the reader with the corresponding issuing keys that issued the QR code
         // ID florence_idpass.png card
-        IDPassReader reader = new IDPassReader("alias0","testdata/demokeys.cfg.p12","changeit");
+        IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
 
         // Next, we prepare the QR code for reading. This is just a standard Java image load
         BufferedImage qrCodeImage = ImageIO.read(
@@ -1158,7 +1097,7 @@ public class TestCases {
                 card3Info.get(ssNumber).equals(ssNumberValue));
 
         // Let us read the same QR code ID using a reader that is initialized with entirely different keys
-        IDPassReader reader2 = new IDPassReader("alias0","testdata/reader.cfg.p12","changeit");
+        IDPassReader reader2 = new IDPassReader("default", "testdata/reader.cfg.p12","changeit");
 
         // Because reader2 has different keys configuration,
         // then it is not able to render (or open) the QR code ID into a card
@@ -1198,7 +1137,10 @@ public class TestCases {
 
         // First, let us copy the root key from our previous reader object to reconstruct 
         // the proper root certificate(s)
-        Certificate rootcert = IDPassReader.generateRootCertificate(reader.getRootKey());
+        byte[][] ret = IDPassHelper.readKeyStoreEntry(
+                "rootcertificatesprivatekeys","testdata/demokeys.cfg.p12", "changeit");
+
+        Certificate rootcert = IDPassReader.generateRootCertificate(ret[0]);
         Certificates rootcerts = Certificates.newBuilder().addCert(rootcert).build();
 
         // Using the root certificate(s) from a previous reader and combined with a different keyset, let us
@@ -1245,7 +1187,8 @@ public class TestCases {
                 .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
                 .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
                 .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
-                .addPrivExtra(KV.newBuilder().setKey("ID#").setValue("SA437277"))
+                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
@@ -1261,7 +1204,6 @@ public class TestCases {
         Card card = reader.newCard(ident,m_certchain);
 
         BufferedImage ri = card.asQRCode();
-        //BufferedImage zoomed = IDPassHelper.ImgReplication(ri,3); // ~300 x 300
         ImageIO.write(ri, "png", tempFile);
 
         BufferedImage qrimage = ImageIO.read(tempFile);
@@ -1286,7 +1228,8 @@ public class TestCases {
                 .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
                 .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
                 .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
-                .addPrivExtra(KV.newBuilder().setKey("ID#").setValue("SA437277"))
+                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
@@ -1296,12 +1239,6 @@ public class TestCases {
                 IDPassReader.DETAIL_SURNAME);
 
         Card card = reader.newCard(ident,m_certchain);
-        String xml =  card.asQRCodeSVG();
-        assertTrue(xml.length() > 0);
-
-        //File outputfile = new File("florence_idpass.svg");
-        //Files.write(outputfile.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
-        //reader.saveConfiguration("alias0","florence.cfg", "changeit");
 
         // Load SVG to BufferedImage and feed image into reader
         // to create card2
@@ -1312,7 +1249,7 @@ public class TestCases {
         InputStream inputStream = new ByteArrayInputStream(bos.toByteArray());
         BufferedImage bi = ImageIO.read(inputStream);
 
-        Card card2 = reader.open(bi, true);
+        Card card2 = reader.open(bi);
         assertNotNull(card2);
         assertArrayEquals(card.asBytes(), card2.asBytes());
         assertTrue(card2.getGivenName().equals("MARION FLORENCE"));
@@ -1337,22 +1274,27 @@ public class TestCases {
                 .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
-        IDPassReader reader = new IDPassReader("alias0","testdata/demokeys.cfg.p12","changeit");
+        IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
 
         reader.setDetailsVisible(
                 IDPassReader.DETAIL_GIVENNAME |
                 IDPassReader.DETAIL_SURNAME |
                 IDPassReader.DETAIL_DATEOFBIRTH);
 
-        Certificate childcert = IDPassReader.generateChildCertificate(reader.getRootKey(),
-                publicVerificationKey);
+        byte[][] ret = IDPassHelper.readKeyStoreEntry(
+                "rootcertificatesprivatekeys", "testdata/demokeys.cfg.p12", "changeit");
+        byte[] root_key = ret[0];
+
+        ret = IDPassHelper.readKeyStoreEntry(
+                "intermedcertificatesprivatekeys", "testdata/demokeys.cfg.p12", "changeit");
+        byte[] intermed_key = ret[0];
+
+        byte[] verification_key = Arrays.copyOfRange(intermed_key, 32, 64);
+        Certificate childcert = IDPassReader.generateChildCertificate(root_key, verification_key);
         Certificates certchain = Certificates.newBuilder().addCert(childcert).build();
 
         Card card = reader.newCard(ident,certchain);
-        File outputfile = new File("florence_idpass.png");
-        ImageIO.write(card.asQRCode(), "png", outputfile);
-
-        File outputfile3 = new File("florence_idpass.svg");
-        Files.write(outputfile3.toPath(), card.asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
+        card.saveToPNG("florence_idpass.png");
+        card.saveToSVG("florence_idpass.svg");
     }
 }

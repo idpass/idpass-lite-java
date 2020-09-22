@@ -18,7 +18,6 @@
 
 package org.idpass.lite;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
@@ -36,12 +35,8 @@ import org.idpass.lite.proto.IDPassCards;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -106,7 +101,6 @@ public class IDPassReader {
     private long ctx; // handle to library
     protected KeySet m_keyset;
     protected Certificates m_rootcertificates;
-    byte[] m_rootkey = new byte[0];
 
     static {
         try {
@@ -116,22 +110,6 @@ public class IDPassReader {
             //TODO: Log the error
             e.printStackTrace();
         }
-    }
-
-    /**
-     * An optional method to add the root key. For now, only one
-     * root key.
-     * @param rootkey The secret ED25519 key of m_rootcertificates
-     */
-
-    public void setRootKey(byte[] rootkey)
-    {
-        m_rootkey = rootkey.clone();
-    }
-
-    public byte[] getRootKey()
-    {
-        return m_rootkey.clone();
     }
 
     /**
@@ -166,19 +144,19 @@ public class IDPassReader {
     public IDPassReader(String alias, String configfile, String keystorePass)
             throws IDPassException, IOException {
 
-        byte[] cfg = IDPassHelper.readKeyStoreEntry(alias, configfile, keystorePass);
-        byteArrays bas = byteArrays.parseFrom(cfg);
-        byteArray ba0 = bas.getVals(0); // keyset buf
-        byteArray ba1 = bas.getVals(1); // rootcertificates buf
-        try {
-            byteArray ba2 = bas.getVals(2); // rootkey buf
-            m_rootkey = ba2.getVal().toByteArray();
-        } catch (IndexOutOfBoundsException e) {
-
+        byte[][] buf = IDPassHelper.readKeyStoreEntry(alias + "_keyset", configfile, keystorePass);
+        if (buf == null) {
+            throw new IDPassException("ID PASS Lite could not be initialized from config");
         }
+        m_keyset = KeySet.parseFrom(buf[0]);
 
-        m_keyset = KeySet.parseFrom(ba0.getVal().toByteArray());
-        m_rootcertificates = Certificates.parseFrom(ba1.getVal().toByteArray());
+        buf = IDPassHelper.readKeyStoreEntry(alias + "_rootcertificates", configfile, keystorePass);
+        if (buf != null) {
+            byte[] certificatesBuf = buf[0];
+            m_rootcertificates = Certificates.parseFrom(certificatesBuf);
+        } else {
+            m_rootcertificates = null;
+        }
 
         ctx = idpass_init(m_keyset.toByteArray(), m_rootcertificates != null ? m_rootcertificates.toByteArray() : null);
         if (ctx == 0) {
@@ -757,18 +735,16 @@ public class IDPassReader {
         return add_certificates(ctx, certs.toByteArray());
     }
 
-    public boolean saveConfiguration(String alias, String keystorefile, String keystorePass)
+    public boolean saveConfiguration(String alias, String keystorepath, String password)
     {
-        byteArray ba1 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_keyset.toByteArray())).build();
-        byteArray ba2 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_rootcertificates.toByteArray())).build();
-        byteArray ba3 = byteArray.newBuilder().setVal(ByteString.copyFrom(m_rootkey)).build();
+        IDPassHelper.writeKeyStoreEntry(alias + "_keyset",
+                keystorepath, password, m_keyset.toByteArray());
 
-        byteArrays bas = byteArrays.newBuilder()
-                .addVals(ba1)
-                .addVals(ba2)
-                .addVals(ba3)
-                .build();
+        if (m_rootcertificates != null) {
+            IDPassHelper.writeKeyStoreEntry(alias + "_rootcertificates",
+                    keystorepath, password, m_rootcertificates.toByteArray());
+        }
 
-        return IDPassHelper.addKeyStoreEntry(alias, bas.toByteArray(), keystorefile, keystorePass);
+        return true;
     }
 }
