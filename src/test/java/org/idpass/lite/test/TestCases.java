@@ -1170,6 +1170,22 @@ public class TestCases {
 
         // Because card6 is not authenticated, the ssNumber is not visible
         assertFalse(card6Info.containsKey(ssNumber));
+
+        // Use default keys of reader. This is the same value to that
+        // of demokeys.cfg.p12
+        IDPassReader reader4 = new IDPassReader();
+        Card card7 = reader4.open(qrCodeImage);
+        assertEquals("MARION FLORENCE", card7.getGivenName());
+
+        // Prior to authentication, ssNumber shall not be visible
+        HashMap<String, String> card7Info = card7.getCardExtras();
+        assertFalse(card7Info.containsKey(ssNumber));
+
+        // Successful pin code authentication on card7, shall make visible
+        // the ssNumber field
+        card7.authenticateWithPIN("1234");
+        assertTrue(card7Info.containsKey(ssNumber) &&
+                card7Info.get(ssNumber).equals(ssNumberValue));
     }
 
     @Test
