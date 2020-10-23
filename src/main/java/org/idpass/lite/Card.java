@@ -19,20 +19,27 @@
 package org.idpass.lite;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.idpass.api.proto.CardDetails;
-import org.idpass.api.proto.IDPassCard;
-import org.idpass.api.proto.IDPassCards;
-import org.idpass.api.proto.Pair;
-import org.idpass.api.proto.PublicSignedIDPassCard;
-import org.idpass.api.proto.SignedIDPassCard;
+import org.api.proto.Certificates;
+import org.api.proto.Ident;
+import org.idpass.lite.proto.CardDetails;
+import org.idpass.lite.proto.IDPassCard;
+import org.idpass.lite.proto.IDPassCards;
+import org.idpass.lite.proto.Pair;
+import org.idpass.lite.proto.PublicSignedIDPassCard;
+import org.idpass.lite.proto.SignedIDPassCard;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.text.SimpleDateFormat;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.Date;
 
 /**
  * An abstract representation of an ID PASS Card
@@ -51,37 +58,14 @@ public class Card {
     /**
      * This constructor is used to create a new ID PASS Card.
      * @param idPassReader The reader instance
-     * @param surname Person surname
-     * @param givenName Person given name
-     * @param dateOfBirth birthday ie, 1978/12/17
-     * @param placeOfBirth Place of birth
-     * @param publicExtra Arbitrary key/value pairs to reside in the public region
-     * @param privateExtra Arbitrary key/value pairs to reside in teh private region
-     * @param photo The photo bytes array
-     * @param pin The card owner personal pin code
+     * @param ident The person details
+     * @param certificates Certificate chain
      * @throws IDPassException ID PASS exception
      */
-    protected Card(IDPassReader idPassReader,
-                String surname,
-                String givenName,
-                Date dateOfBirth,
-                String placeOfBirth,
-                HashMap<String, String> publicExtra,
-                HashMap<String, String> privateExtra,
-                byte[] photo,
-                String pin,
-               byte[][] certificates) throws IDPassException {
+    protected Card(IDPassReader idPassReader, Ident ident,
+                Certificates certificates) throws IDPassException {
         this.reader = idPassReader;
-        byte[] card = this.reader.createNewCard(
-                surname,
-                givenName,
-                new SimpleDateFormat("yyyy/MM/dd").format(dateOfBirth),
-                placeOfBirth,
-                publicExtra,
-                privateExtra,
-                photo,
-                pin,
-                certificates);
+        byte[] card = this.reader.createNewCard(ident, certificates);
 
         try {
             this.cards = IDPassCards.parseFrom(card);
@@ -90,6 +74,29 @@ public class Card {
         }
         this.cardAsByte = card;
         updateDetails();
+    }
+
+    public boolean hasCertificate()
+    {
+        return this.cards.getCertificatesCount() > 0 ? true : false;
+    }
+
+    /**
+     * Verify the signature using certificate chain.
+     *
+     * @return True Returns true if certificate chain
+     * validates and verifies the IDPassCard's signature.
+     */
+
+    public boolean verifyCertificate()
+    {
+        try {
+            IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
+            int nCerts = reader.verifyCardCertificate(fullcard);
+            return (nCerts < 0) ? false : true;
+        } catch (InvalidProtocolBufferException e) {
+            return false;
+        }
     }
 
     /**
@@ -98,43 +105,38 @@ public class Card {
      * @param card The QR code content byte array
      * @throws IDPassException custom exception
      */
-    public Card(IDPassReader idPassReader, byte[] card) throws IDPassException {
+    public Card(IDPassReader idPassReader, byte[] card)
+            throws IDPassException
+    {
         this.reader = idPassReader;
 
         try {
             this.cards = IDPassCards.parseFrom(card);
         } catch (InvalidProtocolBufferException e) {
-            throw new InvalidCardException();
+            throw new IDPassException();
         }
-        verifyPublicCardSignature(this.cards.getPublicCard());
+
         this.cardAsByte = card;
+
         updateDetails();
     }
 
     /**
      *
-     * @param publicCard The public region of the QR code ID
-     * @throws IDPassException custom exception
+     * @return True of certificate is valid
      */
-    private void verifyPublicCardSignature(PublicSignedIDPassCard publicCard) throws IDPassException {
-        byte[] blob = publicCard.getDetails().toByteArray();
-        byte[] signerPublicKey = publicCard.getSignerPublicKey().toByteArray();
-
-        byte[][] allowedKeys = IDPassHelper.divideArray(this.reader.verificationKeys, 32);
-        boolean found = false;
-        for (byte[]key: allowedKeys) {
-            if (Arrays.equals(key, signerPublicKey)) {
-                found = true;
-                break;
+    public boolean verifyCardSignature()
+    {
+        try {
+            IDPassCards fullcard = IDPassCards.parseFrom(cardAsByte);
+            if (!this.reader.verifyCardSignature(fullcard)) {
+                return false;
             }
+        } catch (InvalidProtocolBufferException e) {
+            return false;
         }
-        if(!found) {
-            throw new IDPassException("Unknown Signer key: " + Arrays.toString(signerPublicKey));
-        }
-        boolean flag = this.reader.verifySignature(blob, publicCard.getSignature().toByteArray(), signerPublicKey);
-        if (!flag) {
-            throw new IDPassException("Signature does not match");
-        }
+
+        return true;
     }
 
     /**
@@ -150,12 +152,11 @@ public class Card {
      * Match the face present in the photo with the one in the card.
      * If it match access to the private part of the card is given.
      * @param photo of the card holder
-     * @throws CardVerificationException
-     * @throws InvalidCardException
+     * @throws CardVerificationException custom exception
+     * @throws InvalidCardException custom exception
      */
     public void authenticateWithFace(byte[] photo) throws CardVerificationException, InvalidCardException {
-        byte[] ecard = cards.getEncryptedCard().toByteArray();
-        byte[] buf = this.reader.verifyCardWithFace(photo, ecard);
+        byte[] buf = this.reader.verifyCardWithFace(photo, cardAsByte);
 
         verifyAuth(buf);
     }
@@ -164,13 +165,13 @@ public class Card {
      * Match the pin with the one in the card
      * If it match access to the private part of the card is given.
      * @param pin Pin code of the card holder
-     * @throws CardVerificationException
-     * @throws InvalidCardException
+     * @throws CardVerificationException custom exception
+     * @throws InvalidCardException custom exception
      */
-    public void authenticateWithPIN(String pin) throws CardVerificationException, InvalidCardException {
-        byte[] ecard = cards.getEncryptedCard().toByteArray();
-        byte[] buf = this.reader.verifyCardWithPin(pin, ecard);
-
+    public void authenticateWithPIN(String pin)
+            throws CardVerificationException, InvalidCardException
+    {
+        byte[] buf = this.reader.verifyCardWithPin(pin, cardAsByte);
         verifyAuth(buf);
     }
 
@@ -267,6 +268,16 @@ public class Card {
     }
 
     /**
+     * Returns the SVG format of the QR code representation of
+     * the id card.
+     * @return String An XML SVG vector graphics format
+     */
+
+    public String asQRCodeSVG() {
+        return this.reader.getQRCodeAsSVG(this.cardAsByte);
+    }
+
+    /**
      *  Check if access conditions are satisfied
      * @throws NotVerifiedException custom exception
      */
@@ -274,6 +285,16 @@ public class Card {
         if(!isAuthenticated()) {
             throw new NotVerifiedException();
         }
+    }
+
+    /**
+     * Return identity extra information.
+     * @return Key/value pair of additional information
+     */
+
+    public HashMap<String, String> getCardExtras()
+    {
+        return cardExtras;
     }
 
     /**
@@ -331,8 +352,95 @@ public class Card {
      * @param pbDate A protobuf defined Date
      * @return Returns back a standard Java Date
      */
-    private Date convertDate(org.idpass.api.proto.Date pbDate) {
+    private Date convertDate(org.idpass.lite.proto.Date pbDate) {
         return new GregorianCalendar(pbDate.getYear(), pbDate.getMonth() - 1, pbDate.getDay()).getTime();
     }
 
+    /**
+     * Encrypts input data using card's unique ed25519 public key
+     *
+     * @param data The input data to be encrypted
+     * @return Returns the encrypted data
+     * @throws NotVerifiedException Custom exception
+     */
+
+    public byte[] encrypt(byte[] data)
+            throws NotVerifiedException
+    {
+        checkIsAuthenticated();
+
+        byte[] encrypted = reader.encrypt(data, cardAsByte);
+        return encrypted;
+    }
+
+    /**
+     * Decrypts the input data using card's unique ed25519 private key
+     *
+     * @param data The input data to be decrypted.
+     * @return Returns the decrypted data.
+     * @throws NotVerifiedException Custom exception
+     * @throws InvalidCardException Custom exception
+     */
+
+    public byte[] decrypt(byte[] data)
+            throws NotVerifiedException, InvalidCardException
+    {
+        checkIsAuthenticated();
+        byte[] plaintext = reader.decrypt(data, cardAsByte);
+        return plaintext;
+    }
+
+    public byte[] sign(byte[] data)
+            throws NotVerifiedException
+    {
+        checkIsAuthenticated();
+        byte[] signature = reader.sign(data, cardAsByte);
+        return signature;
+    }
+
+    public boolean verify(byte[] data, byte[] signature, byte[] pubkey)
+            throws NotVerifiedException
+    {
+        checkIsAuthenticated();
+        boolean flag = reader.verifySignature(data, signature, pubkey);
+        return flag;
+    }
+
+    public boolean saveToSVG(String filename)
+    {
+        File outfile = new File(filename);
+        try {
+            Files.write(outfile.toPath(),
+                asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean saveToPNG(String filename)
+    {
+        File outfile = new File(filename);
+        try {
+            ImageIO.write(asQRCode(), "png", outfile);
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
+    }
+
+
+    public boolean saveToJPG(String filename)
+    {
+        File outfile = new File(filename);
+        try {
+            ImageIO.write(asQRCode(), "jpg", outfile);
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
+    }
 }

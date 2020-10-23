@@ -18,6 +18,7 @@
 
 package org.idpass.lite;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
 import com.google.zxing.MultiFormatReader;
@@ -26,11 +27,10 @@ import com.google.zxing.Result;
 import com.google.zxing.ResultMetadataType;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
-import org.idpass.api.proto.Dictionary;
-import org.idpass.api.proto.Pair;
+import org.api.proto.*;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
-import org.idpass.lite.exceptions.InvalidKeyException;
+import org.idpass.lite.proto.IDPassCards;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -86,22 +86,21 @@ public class IDPassReader {
     /**
      * The library is initialized with 3 types of keys.
      *
-     * encryptionKey: A crypto_aead_chacha20poly1305_IETF_KEYBYTES key.
+     * KeySet::encryptionKey: A crypto_aead_chacha20poly1305_IETF_KEYBYTES key.
      * The encrypted content of the QR Code card is protected by this
      * symmetric key.
      *
-     * signatureKey: An ED25519 key that is used both for encryption and
+     * KeySet::signatureKey: An ED25519 key that is used both for encryption and
      * signing. The encrypted content of the QR code card is signed by
      * this key.
      *
-     * verificationKeys: This is a list of public keys. A facial recognition
+     * KeySet::verificationKeys: This is a list of public keys. A facial recognition
      * match and a found verification key from this list are the required
      * access conditions to open a card.
      */
     private long ctx; // handle to library
-    protected byte[] encryptionKey;
-    protected byte[] signatureKey;
-    protected byte[] verificationKeys;
+    protected KeySet m_keyset;
+    protected Certificates m_rootcertificates;
 
     static {
         try {
@@ -114,56 +113,114 @@ public class IDPassReader {
     }
 
     /**
-     * Instantiates an instance of the library
-     * @param encryptionKey is used to encrypt/decrypt the private content of a card
-     * @param signatureKey is used to sign a created card
-     * @throws IDPassException ID PASS exception
+     * Use sane defaults. The same value to that of demokeys.cfg.p12
+     * @throws InvalidProtocolBufferException Protobuf error
+     * @throws IDPassException Custom exception
      */
-    public IDPassReader(byte[] encryptionKey, byte[] signatureKey) throws IDPassException {
-        this(encryptionKey, signatureKey, null, null);
+
+    public IDPassReader()
+            throws InvalidProtocolBufferException, IDPassException
+    {
+        byte[] keysetbuf = {
+                (byte)0x0A ,(byte)0x20 ,(byte)0xEB ,(byte)0xC7 ,(byte)0xE7 ,(byte)0x2C ,(byte)0xED ,(byte)0x4C,
+                (byte)0x29 ,(byte)0x9D ,(byte)0x71 ,(byte)0xEA ,(byte)0x7F ,(byte)0x97 ,(byte)0x44 ,(byte)0xE9,
+                (byte)0xAF ,(byte)0x1F ,(byte)0x7F ,(byte)0xB6 ,(byte)0xE8 ,(byte)0xDD ,(byte)0x5C ,(byte)0xD4,
+                (byte)0x2B ,(byte)0xB0 ,(byte)0xA6 ,(byte)0x6D ,(byte)0x11 ,(byte)0x6E ,(byte)0xAF ,(byte)0x7B,
+                (byte)0x2D ,(byte)0xA1 ,(byte)0x12 ,(byte)0x40 ,(byte)0xDA ,(byte)0x92 ,(byte)0x82 ,(byte)0xE0,
+                (byte)0xD9 ,(byte)0x7F ,(byte)0xCC ,(byte)0xBE ,(byte)0xF0 ,(byte)0xFA ,(byte)0x91 ,(byte)0xAE,
+                (byte)0x66 ,(byte)0x49 ,(byte)0xAD ,(byte)0x67 ,(byte)0xCB ,(byte)0x4A ,(byte)0xDF ,(byte)0xFE,
+                (byte)0x0D ,(byte)0xA8 ,(byte)0x03 ,(byte)0x9D ,(byte)0x42 ,(byte)0x29 ,(byte)0xBD ,(byte)0x15,
+                (byte)0x93 ,(byte)0x0F ,(byte)0xDC ,(byte)0x3D ,(byte)0x98 ,(byte)0xB2 ,(byte)0x02 ,(byte)0x0E,
+                (byte)0x2C ,(byte)0x5C ,(byte)0x39 ,(byte)0xF6 ,(byte)0xFA ,(byte)0x35 ,(byte)0x78 ,(byte)0x68,
+                (byte)0x53 ,(byte)0xA7 ,(byte)0x16 ,(byte)0xCE ,(byte)0x8A ,(byte)0xC3 ,(byte)0x32 ,(byte)0x49,
+                (byte)0x00 ,(byte)0x06 ,(byte)0xFE ,(byte)0x79 ,(byte)0x42 ,(byte)0xFA ,(byte)0x30 ,(byte)0x73,
+                (byte)0xD4 ,(byte)0xCD ,(byte)0x8A ,(byte)0x69 ,(byte)0x1A ,(byte)0x24 ,(byte)0x08 ,(byte)0x02,
+                (byte)0x12 ,(byte)0x20 ,(byte)0x98 ,(byte)0xB2 ,(byte)0x02 ,(byte)0x0E ,(byte)0x2C ,(byte)0x5C,
+                (byte)0x39 ,(byte)0xF6 ,(byte)0xFA ,(byte)0x35 ,(byte)0x78 ,(byte)0x68 ,(byte)0x53 ,(byte)0xA7,
+                (byte)0x16 ,(byte)0xCE ,(byte)0x8A ,(byte)0xC3 ,(byte)0x32 ,(byte)0x49 ,(byte)0x00 ,(byte)0x06,
+                (byte)0xFE ,(byte)0x79 ,(byte)0x42 ,(byte)0xFA ,(byte)0x30 ,(byte)0x73 ,(byte)0xD4 ,(byte)0xCD,
+                (byte)0x8A ,(byte)0x69
+        };
+
+        byte[] rootcertsbuf = {
+                (byte)0x0A ,(byte)0x86 ,(byte)0x01 ,(byte)0x0A ,(byte)0x20 ,(byte)0xA3 ,(byte)0xA1 ,(byte)0x68,
+                (byte)0xB1 ,(byte)0xF4 ,(byte)0x49 ,(byte)0x95 ,(byte)0x94 ,(byte)0x75 ,(byte)0x7E ,(byte)0xEC,
+                (byte)0x3F ,(byte)0x64 ,(byte)0x10 ,(byte)0x64 ,(byte)0x3D ,(byte)0xF3 ,(byte)0x51 ,(byte)0x9D,
+                (byte)0x8C ,(byte)0x68 ,(byte)0xF0 ,(byte)0xC4 ,(byte)0x83 ,(byte)0xF7 ,(byte)0xB2 ,(byte)0xFD,
+                (byte)0x39 ,(byte)0x7D ,(byte)0x27 ,(byte)0x58 ,(byte)0x2B ,(byte)0x12 ,(byte)0x20 ,(byte)0xA3,
+                (byte)0xA1 ,(byte)0x68 ,(byte)0xB1 ,(byte)0xF4 ,(byte)0x49 ,(byte)0x95 ,(byte)0x94 ,(byte)0x75,
+                (byte)0x7E ,(byte)0xEC ,(byte)0x3F ,(byte)0x64 ,(byte)0x10 ,(byte)0x64 ,(byte)0x3D ,(byte)0xF3,
+                (byte)0x51 ,(byte)0x9D ,(byte)0x8C ,(byte)0x68 ,(byte)0xF0 ,(byte)0xC4 ,(byte)0x83 ,(byte)0xF7,
+                (byte)0xB2 ,(byte)0xFD ,(byte)0x39 ,(byte)0x7D ,(byte)0x27 ,(byte)0x58 ,(byte)0x2B ,(byte)0x1A,
+                (byte)0x40 ,(byte)0xE8 ,(byte)0x5A ,(byte)0xC9 ,(byte)0xF4 ,(byte)0x70 ,(byte)0x39 ,(byte)0x53,
+                (byte)0x1D ,(byte)0xF0 ,(byte)0x0E ,(byte)0x69 ,(byte)0xC0 ,(byte)0x3E ,(byte)0xA8 ,(byte)0x6A,
+                (byte)0x63 ,(byte)0x94 ,(byte)0x9C ,(byte)0xB7 ,(byte)0x56 ,(byte)0xD4 ,(byte)0x96 ,(byte)0xF8,
+                (byte)0xB3 ,(byte)0x39 ,(byte)0x64 ,(byte)0xF8 ,(byte)0xEF ,(byte)0x6E ,(byte)0xCE ,(byte)0x96,
+                (byte)0xF8 ,(byte)0x8F ,(byte)0xAC ,(byte)0x82 ,(byte)0x32 ,(byte)0x4B ,(byte)0xFF ,(byte)0x97,
+                (byte)0x3C ,(byte)0x0D ,(byte)0x06 ,(byte)0xB4 ,(byte)0x4C ,(byte)0x99 ,(byte)0xFA ,(byte)0x69,
+                (byte)0xEB ,(byte)0x3B ,(byte)0xD1 ,(byte)0x75 ,(byte)0xDE ,(byte)0x33 ,(byte)0x7B ,(byte)0x64,
+                (byte)0x56 ,(byte)0xBF ,(byte)0x4C ,(byte)0xA1 ,(byte)0xDC ,(byte)0xBE ,(byte)0xB0 ,(byte)0x09,
+                (byte)0x0D
+        };
+
+        m_keyset = KeySet.parseFrom(keysetbuf);
+        m_rootcertificates = Certificates.parseFrom(rootcertsbuf);
+
+        ctx = idpass_init(m_keyset.toByteArray(),
+                m_rootcertificates != null ? m_rootcertificates.toByteArray() : null);
+        if (ctx == 0) {
+            throw new IDPassException("ID PASS Lite could not be initialized");
+        }
     }
 
-    /**
-     * Instantiates an instance of the library
-     * @param encryptionKey is used to encrypt/decrypt the private content of a card
-     * @param signatureKey is used to sign a created card
-     * @param verificationKeys is a list of trusted public keys
-     * @throws IDPassException ID PASS exception
-     */
-    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys) throws IDPassException {
-        this(encryptionKey, signatureKey, verificationKeys, null);
-    }
 
     /**
      * Instantiates an instance of the library with additional verification keys
-     * @param encryptionKey is used to encrypt/decrypt the private content of a card
-     * @param signatureKey is used to sign a created card
-     * @param verificationKeys is a list of trusted public keys
-     * @param rootCertificates is a list of trusted root certificate
+     * @param ks The cryptographic key settings
+     * @param rc The root certificates list
      * @throws IDPassException ID PASS exception
      */
-    public IDPassReader(byte[] encryptionKey, byte[] signatureKey, byte[][] verificationKeys, byte[][] rootCertificates)
+    public IDPassReader(KeySet ks, Certificates rc)
             throws IDPassException {
 
-        if(verificationKeys == null) {
-            //Copy the public key part of the key to the verification
-            this.verificationKeys = Arrays.copyOfRange(signatureKey,32,64);
+        m_keyset = ks;
+        m_rootcertificates = rc;
+
+        // add `rootCertificates` to the parameter
+        ctx = idpass_init(ks.toByteArray(), rc != null ? rc.toByteArray() : null);
+        if (ctx == 0) {
+            throw new IDPassException("ID PASS Lite could not be initialized");
+        }
+    }
+
+    /**
+     * Initializes a reader using preset configuration of keyset
+     * and root certificates from a configuration file
+     * @param alias The key name to get the value configuration from the configuration file
+     * @param configfile This is a PKCS12 file to store reader configuration under a key name
+     * @param keystorePass Password to read PKCS 12 file
+     * @throws IDPassException Custom exception
+     * @throws IOException Java exception
+     */
+
+    public IDPassReader(String alias, String configfile, String keystorePass)
+            throws IDPassException, IOException {
+
+        byte[][] buf = IDPassHelper.readKeyStoreEntry(alias + "_keyset", configfile, keystorePass);
+        if (buf == null) {
+            throw new IDPassException("ID PASS Lite could not be initialized from config");
+        }
+        m_keyset = KeySet.parseFrom(buf[0]);
+
+        buf = IDPassHelper.readKeyStoreEntry(alias + "_rootcertificates", configfile, keystorePass);
+        if (buf != null) {
+            byte[] certificatesBuf = buf[0];
+            m_rootcertificates = Certificates.parseFrom(certificatesBuf);
         } else {
-            ByteBuffer buf = ByteBuffer.allocate(verificationKeys.length * verificationKeys[0].length);
-            for (byte[] key :verificationKeys) {
-                if(key.length != 32) {
-                    throw new InvalidKeyException(key);
-                }
-                buf.put(key);
-            }
-            this.verificationKeys = buf.array();
+            m_rootcertificates = null;
         }
 
-        this.encryptionKey    = encryptionKey.clone();
-        this.signatureKey     = signatureKey.clone();
-
-        //TODO add `rootCertificates` to the parameter
-        ctx = idpass_init(this.encryptionKey, this.signatureKey, this.verificationKeys);
+        ctx = idpass_init(m_keyset.toByteArray(), m_rootcertificates != null ? m_rootcertificates.toByteArray() : null);
         if (ctx == 0) {
             throw new IDPassException("ID PASS Lite could not be initialized");
         }
@@ -175,9 +232,36 @@ public class IDPassReader {
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
      */
-    public Card open(byte[] card) throws IDPassException {
-        return new Card(this, card);
+    public Card open(byte[] card)
+            throws IDPassException
+    {
+        return open(card, false);
     }
+
+    /**
+     * Parse the content of a card
+     * @param bCard The binary content of a card
+     * @param skipCertificateVerification Skip flag for certificate verification
+     * @return Wrapper of the card
+     * @throws InvalidCardException ID PASS exception
+     */
+    public Card open(byte[] bCard, boolean skipCertificateVerification)
+            throws InvalidCardException, IDPassException
+    {
+            Card card = new Card(this, bCard);
+            if (card.hasCertificate()) {
+                if (!skipCertificateVerification && !card.verifyCertificate()) {
+                    throw new InvalidCardException("Certificate could not be verified");
+                }
+            } else {
+                if (!card.verifyCardSignature()) {
+                    throw new InvalidCardException();
+                }
+            }
+
+            return card;
+    }
+
 
     /**
      * Read a QR code image and parse the content of a card
@@ -186,7 +270,33 @@ public class IDPassReader {
      * @throws IDPassException ID PASS exception
      * @throws NotFoundException QR Code not Found
      */
-    public Card open(BufferedImage bufferedImage) throws IDPassException, NotFoundException {
+    public Card open(BufferedImage bufferedImage)
+            throws IDPassException, NotFoundException
+    {
+        LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+        byte[] card;
+
+        try {
+            Result result = new MultiFormatReader().decode(bitmap);
+            Map m = result.getResultMetadata();
+
+            if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
+                List L = (List) m.get(ResultMetadataType.BYTE_SEGMENTS);
+                card = (byte[]) L.get(0);
+            } else {
+                card = result.getText().getBytes();
+            }
+            return this.open(card);
+        } catch (com.google.zxing.NotFoundException e) {
+            return null;
+        }
+    }
+
+    public Card open(BufferedImage bufferedImage, boolean skipCertificateVerfication)
+            throws IDPassException, NotFoundException
+    {
         LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
         BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
 
@@ -202,31 +312,20 @@ public class IDPassReader {
         } else {
             card = result.getText().getBytes();
         }
-        return this.open(card);
+        return this.open(card, skipCertificateVerfication);
     }
 
     /**
      * Create a new ID PASS Card.
-     * @param surname Person surname
-     * @param givenName Person given name
-     * @param dateOfBirth birthday ie, 1978/12/17
-     * @param placeOfBirth Place of birth
-     * @param publicExtra Arbitrary key/value pairs to reside in the public region
-     * @param privateExtra Arbitrary key/value pairs to reside in teh private region
-     * @param photo The photo bytes array
-     * @param pin The card owner personal pin code
+     * @param ident The person identity details
+     * @param certificates Certificate chain
      * @throws IDPassException ID PASS exception
+     * @return Returns Card object
      */
-    public Card newCard(String surname,
-                        String givenName,
-                        Date dateOfBirth,
-                        String placeOfBirth,
-                        HashMap<String, String> publicExtra,
-                        HashMap<String, String> privateExtra,
-                        byte[] photo,
-                        String pin,
-                        byte[][] certificates) throws IDPassException {
-        return new Card(this, surname, givenName, dateOfBirth, placeOfBirth, publicExtra, privateExtra, photo, pin, certificates);
+    public Card newCard(Ident ident, Certificates certificates)
+            throws IDPassException
+    {
+        return new Card(this, ident, certificates);
     }
 
     /**
@@ -328,49 +427,127 @@ public class IDPassReader {
         return facediff;
     }
 
+    /**
+     * Set Dlib biometry dimension. True means,
+     * to use 128 floats with 4 bytes per float.
+     * False means to use 64 floats with 2 bytes
+     * per float.
+     * @param full If true, then facial template is 128 floats with 4 bytes per float.
+     * Otherwise, it is 64 floats with 2 bytes per float.
+     */
 
-    public void addRevokedKey(byte[] publicKey) {
+    public void setDlibDimension(boolean full)
+    {
+        byte[] cmd = new byte[2];
+        cmd[0] = IOCTL_SET_FDIM;
+        cmd[1] = full ? (byte)1 : 0;
 
-        //TODO call the Cpp to add to the list of revoked keys.
+        ioctl(ctx, cmd);
     }
 
-    public void addRevokedKeys(byte[][] publicKey) {
+    /**
+     * Get the context Dlib dimension.
+     * True means it uses Dlib's original 128 floats
+     * 4 bytes per float. False means, half of it
+     * which is 64 floats and 2 bytes per float.
+     * @return Returns true of facial biometry is represented in full 128 floats 4 bytes per float.
+     * Otherwise, facial biometry is represented in half which is 64 floats 2 bytes per float.
+     */
+
+    public boolean getDlibDimension()
+    {
+        byte[] cmd = new byte[2];
+        cmd[0] = IOCTL_GET_FDIM;
+        ioctl(ctx, cmd);
+        return cmd[1] == 1 ? true : false;
+    }
+
+    /**
+     * Set QR code error correction code level.
+     * Valid levels are:
+     *    0 - ECC_LOW
+     *    1 - ECC_MEDIUM (default)
+     *    2 - ECC_QUARTILE
+     *    3 - ECC_HIGH
+     *
+     * @param eccLevel Any of valid levels of QR code ECC
+     */
+
+    public void setQRCodeECC(int eccLevel)
+    {
+        byte[] cmd = new byte[2];
+        cmd[0] = IOCTL_SET_ECC;
+        cmd[1] = (byte)eccLevel;
+        ioctl(ctx, cmd);
+    }
+
+    public static void addRevokedKey(byte[] publicKey) {
 
         //TODO call the Cpp to add to the list of revoked keys.
+        add_revoked_key(publicKey);
+    }
+
+    public static void addRevokedKeys(byte[][] publicKey)
+    {
+        //TODO call the Cpp to add to the list of revoked keys.
+        for (byte[] key : publicKey) {
+            add_revoked_key(key);
+        }
     }
 
     /**
      * These are the C functions documented in the idpass.h header file
      */
     //========================== JNI section =============================
-    private native long idpass_init(byte[] enc, byte[] sig, byte[] verif);
+    private native long idpass_init(byte[] ks, byte[] rootcerts);
     private native byte[] ioctl(long ctx, byte[] cmd);
 
     private native byte[] create_card_with_face(
             long ctx,
-            String surName,
-            String givenName,
-            String dateOfBirth,
-            String placeOfBirth,
-            String pin,
-            byte[] photo,
-            byte[] pubExtra,
-            byte[] privExtra);
+            byte[] ident);
 
     private native byte[] verify_card_with_face(long ctx, byte[] photo, byte[] ecard);
     private native byte[] verify_card_with_pin(long ctx, String pin, byte[] ecard);
     private native byte[] encrypt_with_card(long ctx, byte[] ecard, byte[] data);
-    private native byte[] decrypt_with_card(long ctx, byte[] ciphertext, byte[] skpk);
+    private native byte[] decrypt_with_card(long ctx, byte[] ecard, byte[] data);
     private native byte[] sign_with_card(long ctx, byte[] ecard, byte[] data);
     private native boolean verify_with_card(long ctx, byte[] msg, byte[] signature, byte[] pubkey);
     private native BitSet generate_qrcode_pixels(long ctx, byte[] data);
     private native byte[] compute_face_128d(long ctx, byte[] photo);
     private native byte[] compute_face_64d(long ctx, byte[] photo);
-    private static native byte[] generate_encryption_key(); // 32
-    private static native byte[] generate_secret_signature_key(); // 64
+    private static native boolean generate_encryption_key(byte[] enc); // 32
+    private static native boolean generate_secret_signature_keypair(byte[] pk, byte[] sk); // 64
     private native byte[] card_decrypt(long ctx, byte[] ecard, byte[] key);
-    private native float compare_face_template(long ctx, byte[] face1, byte[] face2);
+    private static native float compare_face_template(byte[] face1, byte[] face2);
+    private static native byte[] generate_root_certificate(byte[] secretKey);
+    private static native byte[] generate_child_certificate(byte[] parentSecretKey, byte[] childSecretKey);
+    private static native void add_revoked_key(byte[] pubkey);
+    private native boolean add_certificates(long ctx, byte[] intermedcerts);
+    private native int verify_card_certificate(long ctx, byte[] blob);
+    private native boolean verify_card_signature(long ctx, byte[] blob);
     //=========================================================
+
+    public static float compareFaceTemplates(byte[] template1, byte[] template2)
+    {
+        float fdif = compare_face_template(template1, template2);
+        return fdif;
+    }
+
+    public byte[] getFaceTemplate(byte[] photo, boolean full)
+    {
+        if (full) {
+            byte[] dimensions = compute_face_128d(ctx, photo);
+            return dimensions;
+        } else {
+            byte[] dimensions = compute_face_64d(ctx, photo);
+            return dimensions;
+        }
+    }
+
+    public int verifyCardCertificate(IDPassCards fullcard)
+    {
+        return verify_card_certificate(ctx, fullcard.toByteArray());
+    }
 
     /**
      * The ecard is the encrypted QR code content. This method
@@ -382,7 +559,7 @@ public class IDPassReader {
      */
     protected byte[] cardDecrypt(byte[] ecard)
     {
-        return card_decrypt(ctx, ecard, encryptionKey);
+        return card_decrypt(ctx, ecard, m_keyset.getEncryptionKey().toByteArray());
     }
 
     /**
@@ -402,59 +579,38 @@ public class IDPassReader {
     }
 
     /**
+     * This is used to verify that the issued QR code ID
+     * card came from a trusted issuer.
+     * @param fullcard The issued QR code ID card
+     * @return true if the message was signed by the key
+     */
+    protected boolean verifyCardSignature(IDPassCards fullcard)
+    {
+        byte[] fullcardblob = fullcard.toByteArray();
+        boolean flag = verify_card_signature(ctx, fullcardblob);
+
+        return flag;
+    }
+
+    /**
      * This is used to issue a new QR code card with the details
      * passed in the parameters.
-     * @param surname Person's surname
-     * @param givenName Person's givenName
-     * @param dateOfBirth Person's date of birth (eg, 1980/12/17)
-     * @param placeOfBirth Place
-     * @param publicExtra Arbitrary key/value pairs to reside  in the public region
-     * @param privateExtra Arbitrary key/value pairs to reside in the private region
-     * @param photo The face of the person to be issued. This shall be used as an access condition to open the card.
-     * @param pin  A personal pin code the person chooses. This is an alternative access condition to open the card.
+     * @param ident The person's identity details
+     * @param certificates Certificate chain
      * @return The card content including the public and private parts
      * @throws IDPassException ID PASS exception
      */
-    protected byte[] createNewCard(String surname,
-                                   String givenName,
-                                   String dateOfBirth,
-                                   String placeOfBirth,
-                                   HashMap<String, String> publicExtra,
-                                   HashMap<String, String> privateExtra,
-                                   byte[] photo,
-                                   String pin,
-                                   byte[][] certificates) throws IDPassException {
-        Dictionary.Builder builder = Dictionary.newBuilder();
-
-        if (publicExtra != null) {
-            publicExtra.forEach((key, value) -> {
-                Pair p1 = Pair.newBuilder().setKey(key).setValue(value).build();
-                builder.addPairs(p1);
-            });
+    protected byte[] createNewCard(Ident ident, Certificates certificates)
+            throws IDPassException
+    {
+        if (certificates != null) {
+            // tip will sign
+            if (!add_certificates(ctx, certificates.toByteArray())) {
+                throw new InvalidCardException("Certificate could not be verified");
+            }
         }
 
-        Dictionary serializedPublicExtra = builder.build();
-
-        builder.clear();
-
-        if (privateExtra != null) {
-            privateExtra.forEach((key, value) -> {
-                Pair p1 = Pair.newBuilder().setKey(key).setValue(value).build();
-                builder.addPairs(p1);
-            });
-        }
-
-        Dictionary serializedPrivateExtra = builder.build();
-
-        byte[] ecard = create_card_with_face(ctx,
-                surname,
-                givenName,
-                dateOfBirth,
-                placeOfBirth,
-                pin,
-                photo,
-                serializedPublicExtra.toByteArray(),
-                serializedPrivateExtra.toByteArray());
+        byte[] ecard = create_card_with_face(ctx, ident.toByteArray());
 
         if (ecard.length == 0) {
             throw new IDPassException();
@@ -473,17 +629,46 @@ public class IDPassReader {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
 
         int qrpixels_len = qrpixels.length() - 1; // always substract by 1
-        int qrsidelen = (int) Math.sqrt(qrpixels_len);
+        double sidelen = Math.sqrt(qrpixels_len);
+        if ((sidelen - Math.floor(sidelen)) != 0) {
+            // if qrpixels_len is not a perfect
+            // square number, then something is wrong
+            return null;
+        }
 
-        BufferedImage qrcode = new BufferedImage(qrsidelen,
-                qrsidelen, BufferedImage.TYPE_INT_RGB);
+        // https://www.qrcode.com/en/howto/code.html
+        int margin = 4;
+        int scale = 3;
+        int qrsidelen = (int) sidelen;
+        int scaledSizeLen = qrsidelen * scale;
+        boolean flag = false;
 
-        for (int x=0; x< qrsidelen; x++) {
-            for (int y=0; y < qrsidelen; y++) {
-                if (qrpixels.get(x * qrsidelen + y)) {
-                    qrcode.setRGB(x, y, Color.BLACK.getRGB());
+        BufferedImage qrcode = new BufferedImage(
+                scaledSizeLen + margin*2,
+                scaledSizeLen + margin*2,
+                BufferedImage.TYPE_INT_RGB);
+
+        int qrHeight = qrcode.getHeight();
+        int qrWidth = qrcode.getWidth();
+
+        for (int x = 0, idx = 0; x < qrWidth; x++) {
+            for (int y = 0; y < qrHeight; y++) {
+                if (x < margin || y < margin ||
+                    x >= (qrWidth - margin) || y >= (qrHeight - margin))
+                {
+                    qrcode.setRGB(x, y, Color.WHITE.getRGB());
+                    continue;
                 } else {
-                    qrcode.setRGB(x, y,Color.WHITE.getRGB());
+                    if ((y-margin) % scale == 0) {
+                        flag = qrpixels.get(idx++);
+                    }
+                    qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() : Color.WHITE.getRGB());
+                }
+            }
+
+            if (x >= margin || x < (qrWidth - margin)) {
+                if ((x-margin) == 0 || (x-margin) % scale != 0) {
+                    idx = ((x-margin) / scale) * qrsidelen;
                 }
             }
         }
@@ -492,12 +677,60 @@ public class IDPassReader {
     }
 
     /**
+     * Returns an XML SVG format QR code representation of buf.
+     * @param buf The binary blob to be encoded into a QR code.
+     * @return Returns an XML SVG vector graphics format
+     */
+
+    protected String getQRCodeAsSVG(byte[] buf)
+    {
+        BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
+
+        int qrpixels_len = qrpixels.length() - 1; // always substract by 1
+        int qrsidelen = (int) Math.sqrt(qrpixels_len);
+
+        int size = qrsidelen;
+        int border = 3;
+
+        StringBuilder sb = new StringBuilder()
+                .append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+                .append("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n")
+                .append(String.format("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" viewBox=\"0 0 %1$d %1$d\" stroke=\"none\">\n",
+                        size + border * 2))
+                .append("\t<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>\n")
+                .append("\t<path d=\"");
+
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if (qrpixels.get(x*qrsidelen + y)) {
+                    if (x != 0 || y != 0) {
+                        sb.append(" ");
+                    }
+                    sb.append(String.format("M%d,%dh1v1h-1z", x + border, y + border));
+                }
+            }
+        }
+
+        return sb.append("\" fill=\"#000000\"/>\n")
+                 .append("</svg>\n")
+                 .toString();
+    }
+
+    /**
      * Helper method for quick generation of needed encryption key
      * @return 32 bytes key
      */
     public static byte[] generateEncryptionKey()
     {
-        return generate_encryption_key();
+        byte[] enc = new byte[32];
+        boolean flag = generate_encryption_key(enc);
+        return enc;
+    }
+
+    public static boolean generateEncryptionKey(byte[] enc)
+    {
+        boolean flag = generate_encryption_key(enc);
+        return flag;
     }
 
     /**
@@ -506,22 +739,74 @@ public class IDPassReader {
      */
     public static byte[] generateSecretSignatureKey()
     {
-        return generate_secret_signature_key();
+        byte[] pk = new byte[32];
+        byte[] sk = new byte[64];
+        boolean flag = generate_secret_signature_keypair(pk, sk);
+        return sk;
+    }
+
+    public static boolean generateSecretSignatureKeypair(byte[] pk, byte[] sk)
+    {
+        boolean flag = generate_secret_signature_keypair(pk, sk);
+        return flag;
+    }
+
+    public static Certificate generateRootCertificate(byte[] secretKey)
+            throws IDPassException
+    {
+        try {
+            Certificate c = Certificate.parseFrom(generate_root_certificate(secretKey));
+            return c;
+        } catch (InvalidProtocolBufferException e) {
+            throw new IDPassException("protobuf::parseFrom");
+        }
+    }
+
+    public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
+            throws IDPassException
+    {
+        try {
+            Certificate c = Certificate.parseFrom(generate_child_certificate(parentSecretKey, childSecretKey));
+            return c;
+        } catch (InvalidProtocolBufferException e) {
+            throw new IDPassException("protobuf::parseFrom");
+        }
+    }
+
+    protected byte[] encrypt(byte[] data, byte[] fullcard)
+    {
+        byte[] encrypted = encrypt_with_card(ctx, fullcard, data);
+        return encrypted;
     }
 
 
-    public static byte[] generateRootCertificate(byte[] secretKey) {
-
-        //TODO call the Cpp to create it.
-        //return the certificate
-        return new byte[128];
+    protected byte[] decrypt(byte[] data, byte[] fullcard)
+    {
+        byte[] decrypted = decrypt_with_card(ctx, fullcard, data);
+        return decrypted;
     }
 
-    public static byte[] generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey) {
-
-        //TODO call the Cpp to create it.
-        //return the certificate
-        return new byte[128];
+    protected byte[] sign(byte[] data, byte[] fullcard)
+    {
+        byte[] signature = sign_with_card(ctx, fullcard, data);
+        return signature;
     }
 
+    public boolean addIntermediateCertificates(Certificates certs)
+    {
+        return add_certificates(ctx, certs.toByteArray());
+    }
+
+    public boolean saveConfiguration(String alias, String keystorepath, String password)
+    {
+        IDPassHelper.writeKeyStoreEntry(alias + "_keyset",
+                keystorepath, password, m_keyset.toByteArray());
+
+        if (m_rootcertificates != null) {
+            IDPassHelper.writeKeyStoreEntry(alias + "_rootcertificates",
+                    keystorepath, password, m_rootcertificates.toByteArray());
+        }
+
+        return true;
+    }
 }

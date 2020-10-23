@@ -230,6 +230,32 @@ public class IDPassLoader
         return getFileFromJar(jarUrl, mainTempDir, relativePath);
     }
 
+    /**
+     * When the main app is bundled as a Fat-jar executable,
+     * the idpass-lite.jar shall be inside the Fat-jar.
+     * The idpass-lite.jar is extracted from the Fat-jar into
+     * a temp directory and then the libidpasslite.so inside idpass-lite.jar
+     * is further extracted into another temp directory.
+     * The full path of libidpasslite.so is returned as a String
+     * and gets System.loaded as a JNI.
+     *
+     * @param jarinjar URL of a jar within a jar
+     * @return Returns the URL of the extracted inner jar.
+     * @throws IOException File error
+     */
+
+    public static URL doubleExtract(String[] jarinjar) throws IOException
+    {
+        URL outerJar = new URL(jarinjar[0] + "!/");
+        String innerJar = jarinjar[1];
+
+        File tempDir = createMainTempDirectory();
+        tempDir.mkdirs();
+
+        File innerJarFile = getFileFromJar(outerJar, tempDir,innerJar);
+        return innerJarFile.toURI().toURL();
+    }
+
     public static String getLibrary() throws IOException
     {
         String idpasslib = "";
@@ -252,6 +278,11 @@ public class IDPassLoader
 
         String idpasslibFullPath = "";
         URL url = IDPassLoader.getThisJarPath(IDPassReader.class);
+
+        if (url.toString().startsWith("jar")) {
+            String[] jarinjar = url.toString().split("!");
+            url = doubleExtract(jarinjar);
+        }
 
         if (IDPassLoader.isJarFile(url)) {
             // 1) create temp dir
