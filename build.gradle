@@ -2,16 +2,14 @@
 plugins {
     id 'java-library'
     id 'application'
-    //id 'signing'
-    id 'maven-publish'
-    id "com.jfrog.bintray" version "1.8.4"
+    id 'signing'
     id 'maven'
 }
 
 ext {
     artifactId = "idpass-lite-java"
-    groupId = "org.idpass"
-    version = '0.0.1'
+    groupId = "io.github.idpass"
+    version = '1.0.0'
     description = "IDPass (Java) is a wrapper API of libidpasslite.so"
 }
 
@@ -24,8 +22,6 @@ repositories {
 group project.ext.groupId
 version = project.ext.version
 
-mainClassName = "org.idpass.IDPass"
-
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -33,6 +29,14 @@ sourceSets {
     main {
         resources {
             srcDirs "src/main/resources"
+        }
+    }
+}
+
+jar {
+    from {
+        (configurations.runtime).collect {
+            it.isDirectory() ? it : zipTree(it)
         }
     }
 }
@@ -53,7 +57,7 @@ dependencies {
     implementation 'com.google.zxing:core:3.4.0'
     implementation 'com.google.zxing:javase:3.4.0'
     implementation 'at.favre.lib:bytes:1.3.0'
-    implementation files('src/main/java/proto/idpasslite.proto.jar')
+    compile files('src/main/java/proto/idpasslite.proto.jar')
 
     // These jars only needed by TestCases.java for unit testing purposes only
     // will not be a transitive dependency in client apps. It is used to convert
@@ -64,13 +68,13 @@ dependencies {
     testRuntimeOnly group: 'com.twelvemonkeys.imageio', name: 'imageio-batik', version: '3.6'
 }
 
-// Tasks
-//signing {
-//    // This will use the GPG Agent
-//    // to sign the jar
-//    useGpgCmd()
-//    sign configurations.archives
-//}
+signing {
+    if (project.hasProperty('signing.keyId') &&
+        project.hasProperty('signing.password') &&
+        project.hasProperty('signing.secretKeyRingFile')) {
+        sign configurations.archives
+    }
+}
 
 task sourcesJar(type: Jar, dependsOn: classes) {
     classifier = 'sources'
@@ -82,99 +86,9 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
     from javadoc.destinationDir
 }
 
-//task signPom(type: Sign) {
-//    sign project.file("$buildDir/publications/mavenJava/pom-default.xml")
-//
-//    // The signing plugin does not seem to notice
-//    // it when the publications folder with the
-//    // signature has been deleted. So we always
-//    // create a new signature
-//    outputs.upToDateWhen { false }
-//}
-
 artifacts {
     archives sourcesJar, javadocJar
 }
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            groupId project.ext.groupId
-            artifactId project.ext.artifactId
-            version project.ext.version
-            artifact sourcesJar
-            artifact javadocJar
-
-
-            project.tasks.withType(Sign) {
-                signatures.all {
-                    def type = it.type
-                    if (it.file.name.endsWith('.tar.gz.asc')) {
-                        // Workaround in case a tar.gz file should published
-                        type = 'tar.gz.asc'
-                    } else if (it.type.equals('xml.asc')) {
-                        // Set correct extension for signature of pom file
-                        type = 'pom.asc'
-                    }
-                    artifact source: it.file, classifier: it.classifier ?: null, extension: type
-                }
-            }
-
-            pom.withXml {
-                def root = asNode()
-                root.appendNode('description', project.ext.description)
-                root.appendNode('name', project.ext.artifactId)
-                root.appendNode('url', 'https://github.com/newlogic42/lab_idpass-lite-java')
-
-                def scm = root.appendNode('scm')
-                scm.appendNode("connection", "scm:git:git://github.com/newlogic42/lab_idpass-lite-java.git")
-                scm.appendNode("developerConnection", "scm:git:ssh://github.com/newlogic42/lab_idpass-lite-java")
-                scm.appendNode("url", "http://github.com/newlogic42/lab_idpass-lite-java")
-
-                def license = root.appendNode('licenses').appendNode('license')
-                license.appendNode('name', 'Mozilla Public License, Version 2.0')
-                license.appendNode('url', 'http://www.mozilla.org/MPL/2.0/index.txt')
-                license.appendNode('distribution', 'repo')
-
-                def developer = root.appendNode('developers').appendNode('developer')
-                developer.appendNode('name', 'Newlogic Impact Lab')
-                developer.appendNode('email', 'dexter@newlogic.io')
-            }
-        }
-    }
-}
-
-bintray {
-    user = findProperty("bintray.user")
-    key = findProperty("bintray.apiKey")
-    publications = ['mavenJava']
-    publish = true
-    pkg {
-        repo = 'idpass-lite-maven'
-        name = project.ext.artifactId
-        userOrg = 'idpass'
-        desc = project.ext.description
-        licenses = ['MPL-2.0']
-        issueTrackerUrl = "https://github.com/newlogic42/lab_idpass-lite-java/issues"
-        vcsUrl = 'https://github.com/newlogic42/lab_idpass-lite-java.git'
-
-        version {
-            name = project.ext.version
-            released = new java.util.Date()
-            vcsTag = project.ext.version
-        }
-    }
-}
-
-//model {
-//    tasks.publishMavenJavaPublicationToMavenLocal {
-//        dependsOn project.tasks.withType(Sign)
-//    }
-//    tasks.signPom {
-//        dependsOn tasks.generatePomFileForMavenJavaPublication
-//    }
-//}
 
 tasks.withType(Test) {
     // a collection to track failedTests
@@ -199,4 +113,50 @@ tasks.withType(Test) {
             }
         }
     }
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+        authentication(userName: ossrhUsername, password: ossrhPassword)
+      }
+
+      snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+        authentication(userName: ossrhUsername, password: ossrhPassword)
+      }
+
+      pom.project {
+        name 'IDPASS LITE'
+        packaging 'jar'
+        // optionally artifactId can be defined here
+        artifactId project.ext.artifactId
+        description 'IDPass (Java) is a wrapper API of libidpasslite.so'
+        url 'https://github.com/idpass/idpass-lite-java'
+
+        scm {
+          connection 'scm:git:git://github.com/idpass/idpass-lite-java.git'
+          developerConnection 'scm:git:ssh://github.com:idpass/idpass-lite-java.git'
+          url 'https://github.com/idpass/idpass-lite-java/tree/master'
+        }
+
+        licenses {
+          license {
+            name 'The Apache License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          }
+        }
+
+        developers {
+          developer {
+            id 'typelogic'
+            name 'Dexter Aparicio'
+            email 'dexter@newlogic.com'
+          }
+        }
+      }
+    }
+  }
 }
