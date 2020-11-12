@@ -28,6 +28,7 @@ import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
+import org.idpass.lite.proto.PostalAddress;
 import org.junit.jupiter.api.*;
 
 import javax.imageio.ImageIO;
@@ -1312,5 +1313,33 @@ public class TestCases {
         Card card = reader.newCard(ident,certchain);
         card.saveToPNG("florence_idpass.png");
         card.saveToSVG("florence_idpass.svg");
+    }
+
+    @Test
+    public void testNewProtobufFields() {
+
+        PostalAddress address = PostalAddress.newBuilder()
+                .addAddressLines("16-27 Deca Homes Prime")
+                .setRegionCode("5")
+                .setLanguageCode("en")
+                .setPostalCode("6044")
+                .build();
+
+        Ident ident = Ident.newBuilder()
+                .setGivenName("John")
+                .setSurName("Doe")
+                .setPin("1234")
+                .setPlaceOfBirth("Aubusson, France")
+                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
+                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"))
+                .setFullName("John Doe")
+                .setUIN("4957694814")
+                .setGender(2)
+                .setPostalAddress(address)
+                .build();
+
+        byte[] buff = ident.toByteArray();
+        int n = buff.length;
     }
 }
