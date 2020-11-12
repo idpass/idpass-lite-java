@@ -155,6 +155,11 @@ uploadArchives {
 
         developers {
           developer {
+            id 'jeremi'
+            name 'Jeremi Joslin'
+            email 'jeremi@newlogic.com'
+          }
+          developer {
             id 'typelogic'
             name 'Dexter Aparicio'
             email 'dexter@newlogic.com'
