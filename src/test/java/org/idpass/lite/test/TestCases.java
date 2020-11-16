@@ -1316,24 +1316,28 @@ public class TestCases {
     }
 
     @Test
-    public void testNewProtobufFields() {
+    public void testNewProtobufFields() throws IDPassException, IOException {
 
         PostalAddress address = PostalAddress.newBuilder()
-                .addAddressLines("16-27 Deca Homes Prime")
+                .addAddressLines("526 N Plymouth Blvd")
+                .addAddressLines("Los Angeles, CA US")
                 .setRegionCode("5")
                 .setLanguageCode("en")
-                .setPostalCode("6044")
+                .setPostalCode("90004")
                 .build();
 
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+
         Ident ident = Ident.newBuilder()
-                .setGivenName("John")
-                .setSurName("Doe")
+                .setPhoto(ByteString.copyFrom(photo))
+                .setGivenName("Manny")
+                .setSurName("Pacquiao")
                 .setPin("1234")
-                .setPlaceOfBirth("Aubusson, France")
-                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
-                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
-                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"))
-                .setFullName("John Doe")
+                .setPlaceOfBirth("Bukidnon, Philippines")
+                .setDateOfBirth(Dat.newBuilder().setYear(1978).setMonth(12).setDay(17))
+                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.5ft"))
+                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("O"))
+                .setFullName("Manny Pacquiao")
                 .setUIN("4957694814")
                 .setGender(2)
                 .setPostalAddress(address)
@@ -1341,5 +1345,18 @@ public class TestCases {
 
         byte[] buff = ident.toByteArray();
         int n = buff.length;
+
+        IDPassReader reader = new IDPassReader(m_keyset, null);
+        Card card = reader.newCard(ident, null);
+
+        PostalAddress addr = card.getPostalAddress();
+        assertNull(addr, "Because postalAddress is private by default and not yet authenticated");
+        assertNull(card.getUIN(), "Because UIN is private by default and not yet authenticated");
+
+        card.authenticateWithPIN("1234");
+
+        addr = card.getPostalAddress();
+        assertNotNull(addr, "postalAddress now visible after success authentication");
+        assertEquals(card.getUIN(), "4957694814");
     }
 }

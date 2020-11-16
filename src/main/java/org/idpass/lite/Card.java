@@ -21,12 +21,7 @@ package org.idpass.lite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
-import org.idpass.lite.proto.CardDetails;
-import org.idpass.lite.proto.IDPassCard;
-import org.idpass.lite.proto.IDPassCards;
-import org.idpass.lite.proto.Pair;
-import org.idpass.lite.proto.PublicSignedIDPassCard;
-import org.idpass.lite.proto.SignedIDPassCard;
+import org.idpass.lite.proto.*;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
@@ -219,6 +214,22 @@ public class Card {
         return this.cardPublicKey;
     }
 
+    public String getUIN() {
+        return (String) cardDetails.get("UIN");
+    }
+
+    public String getfullName() {
+        return (String) cardDetails.get("fullName");
+    }
+
+    public int getGender() {
+        return (int) cardDetails.get("gender");
+    }
+
+    public PostalAddress getPostalAddress() {
+        return (PostalAddress) cardDetails.get("postalAddress");
+    }
+
     /**
      *
      * @return Returns givenname
@@ -338,6 +349,25 @@ public class Card {
 
             if (privateCardDetails.hasDateOfBirth()) {
                 cardDetails.put("dateOfBirth", convertDate(privateCardDetails.getDateOfBirth()));
+            }
+
+            str = privateCardDetails.getUIN();
+            if (str != null && str.length() > 0) {
+                cardDetails.put("UIN", str) ;
+            }
+
+            str = privateCardDetails.getFullName();
+            if (str != null && str.length() > 0) {
+                cardDetails.put("fullName", str) ;
+            }
+
+            int gender = privateCardDetails.getGender();
+            if (gender != 0) {
+                cardDetails.put("gender", gender);
+            }
+
+            if (privateCardDetails.hasPostalAddress()) {
+                cardDetails.put("postalAddress", privateCardDetails.getPostalAddress());
             }
 
             extraList = privateCardDetails.getExtraList();

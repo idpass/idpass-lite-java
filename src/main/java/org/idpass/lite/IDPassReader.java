@@ -82,7 +82,11 @@ public class IDPassReader {
     public static final int DETAIL_DATEOFBIRTH = 4;
     public static final int DETAIL_PLACEOFBIRTH = 8;
     public static final int DETAIL_CREATEDAT = 16;
-
+    public static final int DETAIL_UIN = 32;
+    public static final int DETAIL_FULLNAME = 64;
+    public static final int DETAIL_GENDER = 128;
+    public static final int DETAIL_POSTALADDRESS = 256;
+    
     /**
      * The library is initialized with 3 types of keys.
      *
