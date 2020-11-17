@@ -1,8 +1,8 @@
 # IDPass for Java
 
-[![CircleCI](https://circleci.com/gh/idpass/idpass-lite-java.svg?style=svg&circle-token=4fb5cc4cfe96b754d1842c2443ee638608bc4755)](https://circleci.com/gh/newlogic42/lab_idpass-lite-java)
+[![CircleCI](https://circleci.com/gh/idpass/idpass-lite-java.svg?style=svg&circle-token=4fb5cc4cfe96b754d1842c2443ee638608bc4755)](https://circleci.com/gh/idpass/idpass-lite-java)
 
-This is a Java wrapper over the [libidpasslite](https://github.com/newlogic42/lab_idpass_lite) library that provides developers with an API to interact with ID PASS cards.
+This is a Java wrapper over the [libidpasslite](https://github.com/idpass/idpass-lite) library that provides developers with an API to interact with ID PASS cards.
 
 ## Building
 ```bash
@@ -34,7 +34,7 @@ repositories {
 
 // Add to dependencies section
 dependencies {
-    implementation "org.idpass:idpass:0.0.1"
+    implementation "io.github.idpass:idpass-lite-java:1.0.0"
 }
 ```
 
