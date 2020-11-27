@@ -1012,6 +1012,32 @@ public class TestCases {
     }
 
     @Test
+    public void test_read_p12_inputstream()
+            throws IOException, NotFoundException
+    {
+        try {
+            File p12File = new File("testdata/reader.cfg.p12");
+            InputStream is = new FileInputStream(p12File);
+            // Initialize reader
+            IDPassReader reader = new IDPassReader("default", is, "changeit", "changeit");
+
+            File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
+            BufferedImage bufferedImage = ImageIO.read(qrcodeId);
+
+            // Read the QR code image
+            Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+
+            // hereafter, correct keyset is necessary to be able to operate on the card
+
+            cardOriginal.authenticateWithPIN("1234"); // Now, this one needs correct keyset to work
+            String name = cardOriginal.getGivenName();
+            assertEquals(name, "John");
+        } catch (IDPassException e) {
+            assertFalse(true);
+        }
+    }
+
+    @Test
     public void test_dlib_function() throws IOException
     {
         try {

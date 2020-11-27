@@ -72,6 +72,66 @@ public class IDPassHelper {
     }
 
     /**
+     * Open the pkcs12 file with provided password and returns
+     * the KeyStore object.
+     *
+     * @param stream FileInputStream of the pkcs12 file
+     * @param password Password needed to open the pkcs12 file
+     * @return KeyStore object
+     * @throws IDPassException Standard exception
+     */
+
+    public static KeyStore getKeyStore(InputStream stream, String password)
+            throws IDPassException
+    {
+        try {
+            KeyStore store = KeyStore.getInstance("PKCS12");
+            store.load(stream, password.toCharArray());
+            return store;
+        } catch (KeyStoreException kse) {
+            throw new IDPassException("PKCS12 error getting the key");
+        } catch (Exception e) {
+            throw new IDPassException("PKCS12 error opening the key file");
+        }
+    }
+
+    /**
+     * Read back the saved IDPASS reader's configuration byte array identified by alias name.
+     * @param alias The identifier name of the key/value to read from the keystore file
+     * @param store The loaded key store object
+     * @param password Password to get a key
+     * @return Returns byte[] array of an IDPASS reader's needed security configuration
+     * @throws IDPassException Throws custom exception
+     */
+
+    public static byte[][] readKeyStoreEntry(String alias, KeyStore store, String password)
+            throws IDPassException
+    {
+        try {
+            SecretKey key = (SecretKey)store.getKey(alias, password.toCharArray());
+
+            if (key != null) {
+                byte[] e = key.getEncoded();
+                byte[] keybuf = Base64.getDecoder().decode(new String(e));
+                byteArrays content = byteArrays.parseFrom(keybuf);
+                List<byteArray> m = content.getValsList();
+                byte[][] ret = new byte[m.size()][];
+                for (int i = 0; i < m.size(); i++) {
+                    ret[i] = m.get(i).getVal().toByteArray();
+                }
+                return ret;
+            } else {
+                // key not found
+                return null;
+            }
+        } catch (KeyStoreException kse) {
+            throw new IDPassException("PKCS12 error getting the key");
+        } catch (Exception e) {
+            throw new IDPassException("PKCS12 error opening the key file");
+        }
+    }
+
+    /**
      * Read back the saved IDPASS reader's configuration byte array identified by alias name.
      * @param alias The identifier name of the key/value to read from the keystore file
      * @param keystorepath Full file path of the keystore in the file system

@@ -36,7 +36,9 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.security.KeyStore;
 import java.util.*;
 
 /**
@@ -155,6 +157,42 @@ public class IDPassReader {
         m_keyset = KeySet.parseFrom(buf[0]);
 
         buf = IDPassHelper.readKeyStoreEntry(alias + "_rootcertificates", configfile, keystorePass);
+        if (buf != null) {
+            byte[] certificatesBuf = buf[0];
+            m_rootcertificates = Certificates.parseFrom(certificatesBuf);
+        } else {
+            m_rootcertificates = null;
+        }
+
+        ctx = idpass_init(m_keyset.toByteArray(), m_rootcertificates != null ? m_rootcertificates.toByteArray() : null);
+        if (ctx == 0) {
+            throw new IDPassException("ID PASS Lite could not be initialized");
+        }
+    }
+
+    /**
+     * Initializes a reader using preset configuration of keyset
+     * and root certificates from a configuration file
+     * @param alias The key name to get the value configuration from the configuration file
+     * @param is This is a PKCS12 file input stream
+     * @param keystorePass Password to open PKCS 12 file
+     * @param keyPass Password to get a key
+     * @throws IDPassException Custom exception
+     * @throws IOException Java exception
+     */
+
+    public IDPassReader(String alias, InputStream is, String keystorePass, String keyPass)
+            throws IDPassException, IOException {
+
+        KeyStore store = IDPassHelper.getKeyStore(is, keystorePass);
+
+        byte[][] buf = IDPassHelper.readKeyStoreEntry(alias + "_keyset", store, keyPass);
+        if (buf == null) {
+            throw new IDPassException("ID PASS Lite could not be initialized from config");
+        }
+        m_keyset = KeySet.parseFrom(buf[0]);
+
+        buf = IDPassHelper.readKeyStoreEntry(alias + "_rootcertificates", store, keyPass);
         if (buf != null) {
             byte[] certificatesBuf = buf[0];
             m_rootcertificates = Certificates.parseFrom(certificatesBuf);
