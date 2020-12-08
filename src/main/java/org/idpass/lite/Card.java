@@ -326,6 +326,25 @@ public class Card {
         cardDetails.put("givenName", publicDetails.getGivenName());
         cardDetails.put("placeOfBirth", publicDetails.getPlaceOfBirth());
 
+        if (publicDetails.hasPostalAddress()) {
+            cardDetails.put("postalAddress", publicDetails.getPostalAddress());
+        }
+
+        String maybe = publicDetails.getUIN();
+        if (maybe != null && maybe.length() > 0) {
+            cardDetails.put("UIN", maybe) ;
+        }
+
+        maybe = publicDetails.getFullName();
+        if (maybe != null && maybe.length() > 0) {
+            cardDetails.put("fullName", maybe) ;
+        }
+
+        int gndr = publicDetails.getGender();
+        if (gndr != 0) {
+            cardDetails.put("gender", gndr);
+        }
+
         List<Pair> extraList = publicDetails.getExtraList();
         for (Pair i : extraList) {
             cardExtras.put(i.getKey(), i.getValue());

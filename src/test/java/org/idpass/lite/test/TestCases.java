@@ -1369,4 +1369,59 @@ public class TestCases {
         assertNotNull(addr, "postalAddress now visible after success authentication");
         assertEquals(card.getUIN(), "4957694814");
     }
+
+    @Test
+    public void testVisibilityFlags()
+        throws IDPassException, IOException
+    {
+        PostalAddress address = PostalAddress.newBuilder()
+                .addAddressLines("526 N Plymouth Blvd")
+                .addAddressLines("Los Angeles, CA US")
+                .setRegionCode("5")
+                .setLanguageCode("en")
+                .setPostalCode("90004")
+                .build();
+
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg"));
+
+        Ident ident = Ident.newBuilder()
+                .setUIN("314159")
+                .setPhoto(ByteString.copyFrom(photo))
+                .setGivenName("MARION FLORENCE")
+                .setSurName("DUPONT")
+                .setFullName("MRS. MARION FLORENCE DUPONT")
+                .setGender(1)
+                .setPin("1234")
+                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .setPlaceOfBirth("Paris, France")
+                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+                .setPostalAddress(address)
+                .build();
+
+        IDPassReader reader = new IDPassReader(m_keyset, null);
+
+        reader.setDetailsVisible(
+                IDPassReader.DETAIL_GIVENNAME |
+                IDPassReader.DETAIL_SURNAME |
+                IDPassReader.DETAIL_DATEOFBIRTH |
+                IDPassReader.DETAIL_PLACEOFBIRTH |
+                IDPassReader.DETAIL_POSTALADDRESS);
+
+        Card card = reader.newCard(ident, null);
+
+        assertNotNull(card.getPostalAddress(), "Because DETAIL_POSTALADDRESS is set to visible");
+        assertNull(card.getfullName(), "Because fullName is private and not yet authenticated");
+        assertEquals(card.getPlaceOfBirth(),"Paris, France");
+        assertEquals(card.getGivenName(),"MARION FLORENCE");
+        assertEquals(card.getSurname(),"DUPONT");
+
+        card.authenticateWithPIN("1234");
+
+        assertEquals(card.getfullName(), "MRS. MARION FLORENCE DUPONT");
+        assertNotNull(card.getPostalAddress(), "Because DETAIL_POSTALADDRESS is set to visible");
+    }
 }

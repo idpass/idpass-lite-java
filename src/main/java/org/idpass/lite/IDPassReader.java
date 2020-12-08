@@ -346,12 +346,13 @@ public class IDPassReader {
      * By default, everything is private.
      * @param acl The bit flag of a specific field to make visible
      */
-    public void setDetailsVisible(int acl)
+    public void setDetailsVisible(long acl)
     {
-        byte[] ioctlcmd = new byte[] {
-                IOCTL_SET_ACL,
-                (byte)acl
-        };
+        byte[] flags = ByteBuffer.allocate(8).putLong(acl).array();
+
+        byte[] ioctlcmd = new byte[9];
+        ioctlcmd[0] = IOCTL_SET_ACL;
+        System.arraycopy(flags, 0, ioctlcmd, 1, flags.length);
 
         ioctl(ctx, ioctlcmd);
     }
