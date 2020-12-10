@@ -108,14 +108,10 @@ public class IDPassReader {
     protected KeySet m_keyset;
     protected Certificates m_rootcertificates;
 
+    private static boolean loaded;
+
     static {
-        try {
-            String idpasslib = IDPassLoader.getLibrary();
-            System.load(idpasslib);
-        } catch (IOException e) {
-            //TODO: Log the error
-            e.printStackTrace();
-        }
+        loaded = IDPassLoader.loadLibrary();
     }
 
     /**
