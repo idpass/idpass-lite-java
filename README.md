@@ -34,7 +34,7 @@ repositories {
 
 // Add to dependencies section
 dependencies {
-    implementation "io.github.idpass:idpass-lite-java:1.0.0"
+    implementation "org.idpass:idpass-lite-java:0.0.1-SNAPSHOT"
 }
 ```
 

@@ -8,9 +8,9 @@ plugins {
 
 ext {
     artifactId = "idpass-lite-java"
-    groupId = "io.github.idpass"
-    version = '1.0.1'
-    description = "IDPass (Java) is a wrapper API of libidpasslite.so"
+    groupId = "org.idpass"
+    version = '0.0.1-SNAPSHOT'
+    description = "ID PASS Lite (Java) is a wrapper API of libidpasslite.so"
 }
 
 repositories {
@@ -133,7 +133,7 @@ uploadArchives {
       }
 
       pom.project {
-        name 'IDPASS LITE'
+        name 'ID PASS Lite'
         packaging 'jar'
         // optionally artifactId can be defined here
         artifactId project.ext.artifactId
