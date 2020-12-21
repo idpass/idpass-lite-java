@@ -20,9 +20,13 @@ package org.idpass.lite;
 
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Descriptors;
 import org.api.proto.byteArray;
 import org.api.proto.byteArrays;
 import org.idpass.lite.exceptions.IDPassException;
+import org.idpass.lite.proto.CardDetails;
+import org.idpass.lite.proto.Pair;
+import org.idpass.lite.proto.PostalAddress;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -269,6 +273,80 @@ public class IDPassHelper {
         } catch (Exception e) {
             throw new IDPassException("PKCS12 error opening the key file");
         }
+    }
+
+    public static CardDetails mergeCardDetails(
+        CardDetails details1, CardDetails details2)
+    {
+        String strValue;
+        Map<Descriptors.FieldDescriptor, Object> d1Fields = details1.getAllFields();
+        CardDetails.Builder mergeBuilder = details2.toBuilder();
+
+        for (Map.Entry<Descriptors.FieldDescriptor, Object> d1Field :
+            d1Fields.entrySet())
+        {
+            Descriptors.FieldDescriptor fd = d1Field.getKey();
+
+            switch (fd.toString()) {
+                case "idpass.CardDetails.gender":
+                    int intValue = (int)d1Field.getValue();
+                    mergeBuilder.setGender(intValue);
+                    break;
+
+                case "idpass.CardDetails.fullName":
+                    strValue = d1Field.getValue().toString();
+                    mergeBuilder.setFullName(strValue);
+                    break;
+
+                case "idpass.CardDetails.surName":
+                    strValue = d1Field.getValue().toString();
+                    mergeBuilder.setSurName(strValue);
+                    break;
+
+                case "idpass.CardDetails.givenName":
+                    strValue = d1Field.getValue().toString();
+                    mergeBuilder.setGivenName(strValue);
+                    break;
+
+                case "idpass.CardDetails.UIN":
+                    strValue = d1Field.getValue().toString();
+                    mergeBuilder.setUIN(strValue);
+                    break;
+
+                case "idpass.CardDetails.placeOfBirth":
+                    strValue = d1Field.getValue().toString();
+                    mergeBuilder.setPlaceOfBirth(strValue);
+                    break;
+
+                case "idpass.CardDetails.dateOfBirth":
+                    org.idpass.lite.proto.Date dValue =
+                        (org.idpass.lite.proto.Date)d1Field.getValue();
+                    mergeBuilder.setDateOfBirth(dValue);
+                    break;
+
+                case "idpass.CardDetails.postalAddress":
+                    PostalAddress address = (PostalAddress)d1Field.getValue();
+                    mergeBuilder.setPostalAddress(address);
+                    break;
+
+                case "idpass.CardDetails.extra":
+                    List<Pair> extras = (List<Pair>)d1Field.getValue();
+                    for (Pair e : extras) {
+                        mergeBuilder.addExtra(e);
+                    }
+                    break;
+
+                case "idpass.CardDetails.createdAt":
+                    long longValue = (long)d1Field.getValue();
+                    mergeBuilder.setCreatedAt(longValue);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        return mergeBuilder.build();
     }
 }
 

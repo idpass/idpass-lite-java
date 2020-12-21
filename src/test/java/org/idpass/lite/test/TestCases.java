@@ -20,16 +20,22 @@ package org.idpass.lite.test;
 
 import com.google.protobuf.ByteString;
 import com.google.zxing.NotFoundException;
-import org.api.proto.*;
-import org.idpass.lite.IDPassHelper;
+import org.api.proto.Certificates;
+import org.api.proto.Ident;
+import org.api.proto.KeySet;
+import org.api.proto.byteArray;
 import org.idpass.lite.Card;
+import org.idpass.lite.IDPassHelper;
 import org.idpass.lite.IDPassReader;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
-import org.idpass.lite.proto.PostalAddress;
-import org.junit.jupiter.api.*;
+import org.idpass.lite.proto.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -37,7 +43,12 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -91,17 +102,17 @@ public class TestCases {
                 .setSurName("Doe")
                 .setPin("1234")
                 .setPlaceOfBirth("Aubusson, France")
-                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
-                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
-                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"));
+                .setDateOfBirth(Date.newBuilder().setYear(1980).setMonth(12).setDay(17))
+                .addPubExtra(Pair.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+                .addPrivExtra(Pair.newBuilder().setKey("blood type").setValue("A"));
     }
 
     private Card newTestCard(IDPassReader reader, Certificates certchain) throws IDPassException, IOException {
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
 
         Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo))
-                .addPubExtra(KV.newBuilder().setKey("sports").setValue("boxing").setKey("game").setValue("cards"))
-                .addPrivExtra(KV.newBuilder().setKey("age").setValue("35").setKey("address").setValue("16th Elm Street"))
+                .addPubExtra(Pair.newBuilder().setKey("sports").setValue("boxing").setKey("game").setValue("cards"))
+                .addPrivExtra(Pair.newBuilder().setKey("age").setValue("35").setKey("address").setValue("16th Elm Street"))
                 .build();
 
         Card card = reader.newCard(ident,certchain);
@@ -112,8 +123,8 @@ public class TestCases {
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
 
         Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo))
-                .addPubExtra(KV.newBuilder().setKey("sports").setValue("boxing").setKey("game").setValue("cards"))
-                .addPrivExtra(KV.newBuilder().setKey("age").setValue("35").setKey("address").setValue("16th Elm Street"))
+                .addPubExtra(Pair.newBuilder().setKey("sports").setValue("boxing").setKey("game").setValue("cards"))
+                .addPrivExtra(Pair.newBuilder().setKey("age").setValue("35").setKey("address").setValue("16th Elm Street"))
                 .build();
 
         Card card = reader.newCard(ident,null);
@@ -765,10 +776,10 @@ public class TestCases {
                 .setSurName("Doe")
                 .setPin("1234")
                 .setPlaceOfBirth("Aubusson, France")
-                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
+                .setDateOfBirth(Date.newBuilder().setYear(1980).setMonth(12).setDay(17))
                 .setPhoto(ByteString.copyFrom(photo))
-                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
-                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"))
+                .addPubExtra(Pair.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+                .addPrivExtra(Pair.newBuilder().setKey("blood type").setValue("A"))
                 .build();
 
         /*
@@ -806,10 +817,10 @@ public class TestCases {
                 .setSurName("Doe")
                 .setPin("1234")
                 .setPlaceOfBirth("Aubusson, France")
-                .setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
+                .setDateOfBirth(Date.newBuilder().setYear(1980).setMonth(12).setDay(17))
                 .setPhoto(ByteString.copyFrom(photo))
-                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
-                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A").setKey("place").setValue("Shell Beach"))
+                .addPubExtra(Pair.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.4ft"))
+                .addPrivExtra(Pair.newBuilder().setKey("blood type").setValue("A").setKey("place").setValue("Shell Beach"))
                 .build();
 
         /*
@@ -1209,13 +1220,13 @@ public class TestCases {
                 .setGivenName("MARION FLORENCE")
                 .setSurName("DUPONT")
                 .setPin("1234")
-                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
-                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
-                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
-                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
-                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+                .setDateOfBirth(Date.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(Pair.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(Pair.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPubExtra(Pair.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
@@ -1250,13 +1261,13 @@ public class TestCases {
                 .setGivenName("MARION FLORENCE")
                 .setSurName("DUPONT")
                 .setPin("1234")
-                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
-                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
-                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
-                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
-                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+                .setDateOfBirth(Date.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(Pair.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(Pair.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPubExtra(Pair.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
@@ -1292,13 +1303,13 @@ public class TestCases {
                 .setGivenName("MARION FLORENCE")
                 .setSurName("DUPONT")
                 .setPin("1234")
-                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
-                .addPubExtra(KV.newBuilder().setKey("Sex").setValue("F"))
-                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
-                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
-                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+                .setDateOfBirth(Date.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(Pair.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(Pair.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPubExtra(Pair.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
         IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
@@ -1344,9 +1355,9 @@ public class TestCases {
                 .setSurName("Pacquiao")
                 .setPin("1234")
                 .setPlaceOfBirth("Bukidnon, Philippines")
-                .setDateOfBirth(Dat.newBuilder().setYear(1978).setMonth(12).setDay(17))
-                .addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.5ft"))
-                .addPrivExtra(KV.newBuilder().setKey("blood type").setValue("O"))
+                .setDateOfBirth(Date.newBuilder().setYear(1978).setMonth(12).setDay(17))
+                .addPubExtra(Pair.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.5ft"))
+                .addPrivExtra(Pair.newBuilder().setKey("blood type").setValue("O"))
                 .setFullName("Manny Pacquiao")
                 .setUIN("4957694814")
                 .setGender(2)
@@ -1392,13 +1403,13 @@ public class TestCases {
                 .setFullName("MRS. MARION FLORENCE DUPONT")
                 .setGender(1)
                 .setPin("1234")
-                .setDateOfBirth(Dat.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .setDateOfBirth(Date.newBuilder().setYear(1985).setMonth(1).setDay(1))
                 .setPlaceOfBirth("Paris, France")
-                .addPubExtra(KV.newBuilder().setKey("Nationality").setValue("French"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
-                .addPubExtra(KV.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
-                .addPubExtra(KV.newBuilder().setKey("ID").setValue("SA437277"))
-                .addPrivExtra(KV.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+                .addPubExtra(Pair.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPubExtra(Pair.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .setPostalAddress(address)
                 .build();
 
@@ -1423,5 +1434,86 @@ public class TestCases {
 
         assertEquals(card.getfullName(), "MRS. MARION FLORENCE DUPONT");
         assertNotNull(card.getPostalAddress(), "Because DETAIL_POSTALADDRESS is set to visible");
+    }
+
+    /**
+     * Merge two CardDetails into one
+     */
+
+    @Test
+    public void testMergeDetails() {
+        CardDetails d1 = CardDetails.newBuilder()
+                .setFullName("John Murdoch")
+                .build();
+
+        CardDetails d2 = CardDetails.newBuilder()
+                .setGivenName("JOHN")
+                .setSurName("MURDOCH")
+                .build();
+
+        CardDetails merged = IDPassHelper.mergeCardDetails(d1,d2);
+
+        assertEquals(merged.getAllFields().keySet().size(), 3);
+        assertEquals(merged.getFullName(), "John Murdoch");
+        assertEquals(merged.getSurName(), "MURDOCH");
+        assertEquals(merged.getGivenName(), "JOHN");
+
+        merged = IDPassHelper.mergeCardDetails(d2,d1);
+
+        assertEquals(merged.getAllFields().keySet().size(), 3);
+        assertEquals(merged.getFullName(), "John Murdoch");
+        assertEquals(merged.getSurName(), "MURDOCH");
+        assertEquals(merged.getGivenName(), "JOHN");
+
+        org.idpass.lite.proto.Date dob = org.idpass.lite.proto.Date.newBuilder()
+                .setYear(1967)
+                .setMonth(10)
+                .setDay(29)
+                .build();
+
+        // Add dob into d1 CardDetails
+        d1 = d1.toBuilder().setDateOfBirth(dob).build();
+        merged = IDPassHelper.mergeCardDetails(d2,d1);
+
+        assertEquals(merged.getAllFields().keySet().size(), 4);
+        assertEquals(merged.getFullName(), "John Murdoch");
+        assertEquals(merged.getSurName(), "MURDOCH");
+        assertEquals(merged.getGivenName(), "JOHN");
+
+        List<Pair> extras = new ArrayList<>();
+        extras.add(Pair.newBuilder().setKey("Weight").setValue("152 lbs").build());
+        extras.add(Pair.newBuilder().setKey("Hair Color").setValue("black").build());
+
+        // Add extras to d1 CardDetails
+        for (Pair x : extras) {
+            d1 = d1.toBuilder().addExtra(x).build();
+        }
+
+        extras.clear();
+
+        extras.add(Pair.newBuilder().setKey("Eye Color").setValue("Hazel").build());
+        extras.add(Pair.newBuilder().setKey("Height").setValue("6 feet").build());
+        extras.add(Pair.newBuilder().setKey("ID Type").setValue("Drivers' license").build());
+
+        // Add extras to d2 CardDetails
+        for (Pair x : extras) {
+            d2 = d2.toBuilder().addExtra(x).build();
+        }
+
+        merged = IDPassHelper.mergeCardDetails(d1,d2);
+
+        // Check if fields got merged
+        assertEquals(merged.getAllFields().keySet().size(), 5);
+        assertEquals(merged.getFullName(), "John Murdoch");
+        assertEquals(merged.getSurName(), "MURDOCH");
+        assertEquals(merged.getGivenName(), "JOHN");
+        assertEquals(merged.getExtraCount(), d1.getExtraCount() + d2.getExtraCount());
+
+        List<Pair> mergedExtras = Stream.concat(d1.getExtraList().stream(),
+                d2.getExtraList().stream()).collect(Collectors.toList());
+
+        for (Pair x : mergedExtras) {
+            assertTrue(merged.getExtraList().contains(x));
+        }
     }
 }

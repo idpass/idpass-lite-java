@@ -43,12 +43,29 @@ public class Card {
     private IDPassReader reader;
     private IDPassCards cards;
     private CardDetails privateCardDetails = null;
+    private CardDetails publicCardDetails = null;
     private boolean isAuthenticated = false;
     private byte[] cardPublicKey = null;
     private byte[] cardAsByte = null;
 
     private HashMap<String, Object> cardDetails = new HashMap<String, Object>();
     private HashMap<String, String> cardExtras = new HashMap<String, String>();
+
+    /**
+     * Returns publicly visible details. Returns
+     * a merge of publicly visible details and
+     * private details if authenticated.
+     * @return Identity field details
+     */
+
+    public CardDetails getDetails() {
+        CardDetails details = publicCardDetails;
+        if (isAuthenticated) {
+            details = IDPassHelper.mergeCardDetails(
+                publicCardDetails, privateCardDetails);
+        }
+        return details;
+    }
 
     /**
      * This constructor is used to create a new ID PASS Card.
@@ -318,6 +335,8 @@ public class Card {
 
         PublicSignedIDPassCard pubCard = cards.getPublicCard();
         CardDetails publicDetails = pubCard.getDetails();
+
+        publicCardDetails = publicDetails;
 
         if (publicDetails.hasDateOfBirth()) {
             cardDetails.put("dateOfBirth", convertDate(publicDetails.getDateOfBirth()));

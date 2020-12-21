@@ -31,6 +31,7 @@ import org.api.proto.*;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.proto.IDPassCards;
+import org.idpass.lite.proto.Certificate;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
