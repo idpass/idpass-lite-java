@@ -19,7 +19,9 @@
 package org.idpass.lite.test;
 
 import com.google.protobuf.ByteString;
-import com.google.zxing.NotFoundException;
+import com.google.zxing.*;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
 import org.api.proto.KeySet;
@@ -31,6 +33,7 @@ import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
+import org.idpass.lite.proto.Date;
 import org.idpass.lite.proto.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,16 +46,49 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * The QRCodeImageScanner externalizes the zxing dependency outside
+ * of idpass-lite-java jar library.
+ */
+
+class QRCodeImageScanner implements Function<BufferedImage, byte[]> {
+    @Override
+    public byte[] apply(BufferedImage img) {
+
+        LuminanceSource source = new BufferedImageLuminanceSource(img);
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+        byte[] card;
+
+        try {
+            Result result = new MultiFormatReader().decode(bitmap);
+            Map m = result.getResultMetadata();
+
+            if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
+                List L = (List) m.get(ResultMetadataType.BYTE_SEGMENTS);
+                card = (byte[]) L.get(0);
+            } else {
+                card = result.getText().getBytes();
+            }
+        } catch (com.google.zxing.NotFoundException e) {
+            return null;
+        }
+
+        return card;
+    }
+}
+
 public class TestCases {
+    // QR code scanner with zxing dependency in test cases only
+    Function<BufferedImage, byte[]> qrImageScanner = new QRCodeImageScanner();
+
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
     byte[] publicVerificationKey = Arrays.copyOfRange(signaturekey, 32, 64);
@@ -584,6 +620,7 @@ public class TestCases {
     @Test
     public void testGetQRCode() throws IOException, IDPassException, NotFoundException {
         IDPassReader reader = new IDPassReader(m_keyset, null);
+        reader.setQrImageScanner(qrImageScanner);
         Card card = newTestCard(reader);
 
         BufferedImage qrCode = card.asQRCode();
@@ -808,6 +845,7 @@ public class TestCases {
         /* Initialize the library via an IDPassReader instance with mandatory key set */
 
         IDPassReader reader = new IDPassReader(keySet, null);
+        reader.setQrImageScanner(qrImageScanner);
 
         /* Fill-up personal details of an identity to register */
 
@@ -959,6 +997,7 @@ public class TestCases {
 
         // Initialize reader with proper keyset
         IDPassReader reader = new IDPassReader(keyset, null);
+        reader.setQrImageScanner(qrImageScanner);
 
         File qrcodeId = new File(String.valueOf(Paths.get("testdata/image.jpg")));
         BufferedImage bufferedImage = ImageIO.read(qrcodeId);
@@ -984,6 +1023,7 @@ public class TestCases {
 
         // Initialize reader
         IDPassReader reader = new IDPassReader(keyset, rootcerts);
+        reader.setQrImageScanner(qrImageScanner);
 
         File qrcodeId = new File(String.valueOf(Paths.get("testdata/card_with_cert.jpg")));
         BufferedImage bufferedImage = ImageIO.read(qrcodeId);
@@ -1005,6 +1045,7 @@ public class TestCases {
         try {
             // Initialize reader
             IDPassReader reader = new IDPassReader("default", "testdata/reader.cfg.p12", "changeit");
+            reader.setQrImageScanner(qrImageScanner);
 
             File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
             BufferedImage bufferedImage = ImageIO.read(qrcodeId);
@@ -1031,6 +1072,7 @@ public class TestCases {
             InputStream is = new FileInputStream(p12File);
             // Initialize reader
             IDPassReader reader = new IDPassReader("default", is, "changeit", "changeit");
+            reader.setQrImageScanner(qrImageScanner);
 
             File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
             BufferedImage bufferedImage = ImageIO.read(qrcodeId);
@@ -1086,6 +1128,7 @@ public class TestCases {
         // First, we initialize the reader with the corresponding issuing keys that issued the QR code
         // ID florence_idpass.png card
         IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
+        reader.setQrImageScanner(qrImageScanner);
 
         // Next, we prepare the QR code for reading. This is just a standard Java image load
         BufferedImage qrCodeImage = ImageIO.read(
@@ -1136,6 +1179,7 @@ public class TestCases {
 
         // Let us read the same QR code ID using a reader that is initialized with entirely different keys
         IDPassReader reader2 = new IDPassReader("default", "testdata/reader.cfg.p12","changeit");
+        reader2.setQrImageScanner(qrImageScanner);
 
         // Because reader2 has different keys configuration,
         // then it is not able to render (or open) the QR code ID into a card
@@ -1184,6 +1228,7 @@ public class TestCases {
         // Using the root certificate(s) from a previous reader and combined with a different keyset, let us
         // initialize a new reader3 instance
         IDPassReader reader3 = new IDPassReader(m_keyset, rootcerts);
+        reader3.setQrImageScanner(qrImageScanner);
 
         // Because reader3 is initialized with proper root certificate(s),
         // it is able to open (or render) the QR code into a Card.
@@ -1230,6 +1275,7 @@ public class TestCases {
                 .build();
 
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
+        reader.setQrImageScanner(qrImageScanner);
 
         reader.setDetailsVisible(
                 IDPassReader.DETAIL_GIVENNAME |
@@ -1271,6 +1317,7 @@ public class TestCases {
                 .build();
 
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
+        reader.setQrImageScanner(qrImageScanner);
 
         reader.setDetailsVisible(
                 IDPassReader.DETAIL_GIVENNAME |

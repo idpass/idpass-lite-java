@@ -19,28 +19,24 @@
 package org.idpass.lite;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.LuminanceSource;
-import com.google.zxing.MultiFormatReader;
-import com.google.zxing.NotFoundException;
-import com.google.zxing.Result;
-import com.google.zxing.ResultMetadataType;
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
-import com.google.zxing.common.HybridBinarizer;
-import org.api.proto.*;
+import org.api.proto.Certificates;
+import org.api.proto.Ident;
+import org.api.proto.KeySet;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
-import org.idpass.lite.proto.IDPassCards;
 import org.idpass.lite.proto.Certificate;
+import org.idpass.lite.proto.IDPassCards;
 
-import java.awt.Color;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
-import java.util.*;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.function.Function;
 
 /**
  * Wrapper class of the libidpasslite.so shared
@@ -48,6 +44,8 @@ import java.util.*;
  */
 
 public class IDPassReader {
+
+    private Function<BufferedImage, byte[]> qrImageScanner;
 
     /**
      * These constants are used to make some generalized calls into
@@ -113,6 +111,10 @@ public class IDPassReader {
 
     static {
         loaded = IDPassLoader.loadLibrary();
+    }
+
+    public void setQrImageScanner(Function<BufferedImage, byte[]> qrImageScanner) {
+        this.qrImageScanner = qrImageScanner;
     }
 
     /**
@@ -245,51 +247,33 @@ public class IDPassReader {
      * @param bufferedImage The QR code image
      * @return Wrapper of the card
      * @throws IDPassException ID PASS exception
-     * @throws NotFoundException QR Code not Found
      */
     public Card open(BufferedImage bufferedImage)
-            throws IDPassException, NotFoundException
+            throws IDPassException
     {
-        LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
-        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-
-        byte[] card;
-
-        try {
-            Result result = new MultiFormatReader().decode(bitmap);
-            Map m = result.getResultMetadata();
-
-            if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
-                List L = (List) m.get(ResultMetadataType.BYTE_SEGMENTS);
-                card = (byte[]) L.get(0);
-            } else {
-                card = result.getText().getBytes();
+        if (qrImageScanner != null) {
+            byte[] card;
+            card = qrImageScanner.apply(bufferedImage);
+            if (card != null) {
+                return this.open(card);
             }
-            return this.open(card);
-        } catch (com.google.zxing.NotFoundException e) {
-            return null;
         }
+
+        return null;
     }
 
     public Card open(BufferedImage bufferedImage, boolean skipCertificateVerfication)
-            throws IDPassException, NotFoundException
+            throws IDPassException
     {
-        LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
-        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-
-        byte[] card;
-
-
-        Result result = new MultiFormatReader().decode(bitmap);
-        Map m = result.getResultMetadata();
-
-        if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
-            List L = (List)m.get(ResultMetadataType.BYTE_SEGMENTS);
-            card = (byte[])L.get(0);
-        } else {
-            card = result.getText().getBytes();
+        if (qrImageScanner != null) {
+            byte[] card;
+            card = qrImageScanner.apply(bufferedImage);
+            if (card != null) {
+                return this.open(card, skipCertificateVerfication);
+            }
         }
-        return this.open(card, skipCertificateVerfication);
+
+        return null;
     }
 
     /**
