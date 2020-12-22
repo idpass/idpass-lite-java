@@ -7,7 +7,6 @@ This is a Java wrapper of the [libidpasslite](https://github.com/idpass/idpass-l
 ## Building
 ```bash
 ./gradlew build
-./gradlew test
 ```
 
 ## Features
