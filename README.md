@@ -4,6 +4,9 @@
 
 This is a Java wrapper of the [libidpasslite](https://github.com/idpass/idpass-lite) library that provides developers with an API to create and interact with ID PASS Lite cards.
 
+![id front](testdata/idpass-lite-java-sample-front.png?raw=true "front") ![id back](testdata/idpass-lite-java-sample-back.png?raw=true "back")
+
+
 ## Building
 ```bash
 ./gradlew build
