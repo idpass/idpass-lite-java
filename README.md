@@ -10,28 +10,26 @@ This is a Java wrapper of the [libidpasslite](https://github.com/idpass/idpass-l
 ```
 
 ## Features
-- create card with face
-- verify card with face
-- verify card with pin
-- sign with card
-- encrypt with card
-- add/revoke/verify certificates
-- generate QR Code
-- read QR Code
+- Create card with face
+- Verify card with face
+- Verify card with pin
+- Sign with card
+- Encrypt with card
+- Add/revoke/verify certificates
+- Generate QR Code
+- Read QR Code
 
 ## Quick start
-Sample usage....
+This library is used to generate a secure and biometrically-binding QR coded identification cards. 
 
 ### 1. Install
-Install by adding the bintray repository and the dependency. For Maven users, please see ...
+Declare Maven Central repository in the dependency configuration. For example, in `build.gradle`:
 
 ```groovy
-// Top level build file
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
-// Add to dependencies section
 dependencies {
     implementation "org.idpass:idpass-lite-java:0.0.1-SNAPSHOT"
 }
@@ -39,30 +37,68 @@ dependencies {
 
 ### 2. Usage
 
+Initializing the `IDPassReader` object:
+
 ```java
-KeySet keySet = KeySet.newBuilder()
-	.setEncryptionKey(ByteString.copyFrom(encryptionKey))
-	.setSignatureKey(ByteString.copyFrom(signatureKey))
-	.build();
+// Generate cryptographic keys
+byte[] encryptionkey = IDPassHelper.generateEncryptionKey();
+byte[] signaturekey = IDPassHelper.generateSecretSignatureKey();
+byte[] publicVerificationKey = Arrays.copyOfRange(signaturekey, 32, 64);
 
-IDPassReader reader = new IDPassReader(keySet, rootCerts);
+// Generate certificate. This is optional.
+byte[] rootkey = IDPassHelper.generateSecretSignatureKey();
+Certificate rootcert = IDPassReader.generateRootCertificate(rootkey);
+Certificates rootcerts = Certificates.newBuilder().addCert(rootcert).build();
+Certificate childcert = IDPassReader.generateChildCertificate(rootkey, publicVerificationKey);
+Certificates certchain = Certificates.newBuilder().addCert(childcert).build();
 
-byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
+// Initialize a keyset object with the keys
+KeySet keyset = KeySet.newBuilder()
+    .setEncryptionKey(ByteString.copyFrom(encryptionkey))
+    .setSignatureKey(ByteString.copyFrom(signaturekey))
+    .addVerificationKeys(byteArray.newBuilder()
+        .setTyp(byteArray.Typ.ED25519PUBKEY)
+        .setVal(ByteString.copyFrom(publicVerificationKey)).build())
+    .build();
+
+// Initialize IDPassReader object with the keyset and an optional certificate
+IDPassReader reader = new IDPassReader(keyset, rootcerts);
+```
+
+Generate a secure and biometrically-binding **ID PASS Lite** QR code ID using the initialized `IDPassReader` object:
+
+
+```java
+// Scan photo of card ID owner
+byte[] photo = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg"));
+
+// Set identity details into `Ident` object
 Ident ident = Ident.newBuilder()
-	.setGivenName("John")
-	.setSurName("Doe")
-	.setPin("1234")
-	.setPlaceOfBirth("Aubusson, France")
-	.setDateOfBirth(Dat.newBuilder().setYear(1980).setMonth(12).setDay(17))
-	.setPhoto(ByteString.copyFrom(photo))
-	.addPubExtra(KV.newBuilder().setKey("gender").setValue("male").setKey("height").setValue("5.5ft"))
-	.addPrivExtra(KV.newBuilder().setKey("blood type").setValue("A"))
-	.build();
+    .setPhoto(ByteString.copyFrom(photo))
+    .setGivenName("MARION FLORENCE")
+    .setSurName("DUPONT")
+    .setPin("1234")
+    .setDateOfBirth(Date.newBuilder().setYear(1985).setMonth(1).setDay(1))
+    .addPubExtra(Pair.newBuilder().setKey("Sex").setValue("F"))
+    .addPubExtra(Pair.newBuilder().setKey("Nationality").setValue("French"))
+    .addPubExtra(Pair.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+    .addPubExtra(Pair.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+    .addPubExtra(Pair.newBuilder().setKey("ID").setValue("SA437277"))
+    .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+    .build();
 
-Card card = reader.newCard(ident, intermedCerts);
+// Generate a secure ID PASS Lite ID 
+Card card = reader.newCard(ident, certchain);
 
+// Render the ID PASS Lite ID as a secure QR code
 BufferedImage qrCode = card.asQRCode();
+
+// Scan the generated ID PASS Lite QR code with the reader
 Card readCard = reader.open(qrCode);
-card.authenticateWithFace(photo);
+
+// Biometrically authenticate into ID PASS Lite QR code ID using face recognition
+readCard.authenticateWithFace(photo);
+
+// Private identity details shall be available when authenticated
 readCard.getGivenName();
 ```
