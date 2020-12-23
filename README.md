@@ -102,3 +102,12 @@ readCard.authenticateWithFace(photo);
 // Private identity details shall be available when authenticated
 readCard.getGivenName();
 ```
+
+An alternative initialization using **PKCS12** keystore file:
+
+```java
+File p12File = new File("/path/to/demokeys.cfg.p12");
+InputStream is = new FileInputStream(p12File);
+IDPassReader reader = new IDPassReader("default", is, "changeit", "changeit");
+```
+
