@@ -32,6 +32,7 @@ repositories {
 
 dependencies {
     implementation "org.idpass:idpass-lite-java:0.0.1-SNAPSHOT"
+    implementation 'com.google.protobuf:protobuf-java:3.12.2'
 }
 ```
 
