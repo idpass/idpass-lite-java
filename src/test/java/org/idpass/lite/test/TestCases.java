@@ -46,6 +46,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -1562,5 +1563,68 @@ public class TestCases {
         for (Pair x : mergedExtras) {
             assertTrue(merged.getExtraList().contains(x));
         }
+    }
+
+    /**
+     * A helper method to generate random alphananumeric
+     * string to simulate keystore passwords during tests
+     * @param n Length of password to generate
+     * @return Returns alphananumeric string
+     */
+
+    public static String randomString(int n) {
+        int leftLimit = 48; // numeral '0'
+        int rightLimit = 122; // letter 'z'
+        int targetStringLength = n;
+        Random random = new Random();
+
+        String generatedString = random.ints(leftLimit, rightLimit + 1)
+                .filter(i -> (i <= 57 || i >= 65) && (i <= 90 || i >= 97))
+                .limit(targetStringLength)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+
+        return generatedString;
+    }
+
+    /**
+     * Tests write/read of entries in p12 keystore file
+     *
+     * @throws IOException If wrong keystore password
+     * @throws IDPassException If wrong keystore password
+     */
+
+    @Test
+    public void writeReadKeyStoreEntryTest()
+        throws IOException, IDPassException
+    {
+        SecureRandom sr = new SecureRandom();
+
+        String keystorePass =  randomString(64);
+        String keyPass = randomString(64);
+
+        byte[] buf1 = new byte[13];
+        byte[] buf2 = new byte[64];
+        byte[] buf3 = new byte[256];
+
+        sr.nextBytes(buf1);
+        sr.nextBytes(buf2);
+        sr.nextBytes(buf3);
+
+        File keystorefile = File.createTempFile("tmp", null);
+
+        IDPassHelper.writeKeyStoreEntry("keyentry1", keystorefile, keystorePass, keyPass, buf1, buf2);
+        IDPassHelper.writeKeyStoreEntry("keyentry2", keystorefile, keystorePass, keyPass, buf3);
+
+        byte[][] entry = IDPassHelper.readKeyStoreEntry("keyentry1", new FileInputStream(keystorefile), keystorePass, keyPass);
+        assertEquals(entry.length, 2);
+        assertArrayEquals(buf1, entry[0]);
+        assertArrayEquals(buf2, entry[1]);
+
+        entry = IDPassHelper.readKeyStoreEntry("keyentry2", new FileInputStream(keystorefile), keystorePass, keyPass);
+        assertEquals(entry.length, 1);
+        assertArrayEquals(buf3, entry[0]);
+
+        keystorefile.delete();
     }
 }

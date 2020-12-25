@@ -177,6 +177,46 @@ public class IDPassHelper {
     }
 
     /**
+     * Read a key entry from p12 file identified by alias
+     *
+     * @param alias The key name of entry to read from p12 file
+     * @param keystorepath An InputStream of the p12 keystore file
+     * @param keystorePass Password to open keystore file
+     * @param keyPass Password to access key entry
+     * @return Returns array of byte array on success or null if key alias does not exsists
+     * @throws IDPassException Wrong password either in keystore file or in key entry
+     */
+
+    public static byte[][] readKeyStoreEntry(String alias, InputStream keystorepath,
+        String keystorePass, String keyPass)
+        throws IDPassException
+    {
+        try {
+            KeyStore store = IDPassHelper.getKeyStore(keystorepath, keystorePass);
+            SecretKey key = (SecretKey)store.getKey(alias, keyPass.toCharArray());
+
+            if (key != null) {
+                byte[] e = key.getEncoded();
+                byte[] keybuf = Base64.getDecoder().decode(new String(e));
+                byteArrays content = byteArrays.parseFrom(keybuf);
+                List<byteArray> m = content.getValsList();
+                byte[][] ret = new byte[m.size()][];
+                for (int i = 0; i < m.size(); i++) {
+                    ret[i] = m.get(i).getVal().toByteArray();
+                }
+                return ret;
+            } else {
+                // key not found
+                return null;
+            }
+        } catch (KeyStoreException kse) {
+            throw new IDPassException("PKCS12 error getting the key");
+        } catch (Exception e) {
+            throw new IDPassException("PKCS12 error opening the key file");
+        }
+    }
+
+    /**
      * Adds a key/value pair into a PKCS12 keystore file. The key name is identified by
      * alias and the value is in keybuf. The keybuf byte array is a custom byte array
      * that packs together the IDPASS reader's keyset and root certificates.
@@ -232,6 +272,79 @@ public class IDPassHelper {
                 store.store(out, password.toCharArray());
                 out.close();
 
+                return true;
+
+            } catch (IOException | KeyStoreException | CertificateException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+                //throw new IDPassException("PKCS12 keystore read error");
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Add an entry identified by alias into p12 keystore file. The
+     * entry value can be a list of byte arrays and whose meaning is
+     * specific according to purpose of this entry.
+     *
+     * @param alias The name of the entry
+     * @param keystorefile The p12 keystore file
+     * @param keystorePass Password to open p12 keystore file
+     * @param keyPass Password to access this entry
+     * @param entry A list of byte arrays
+     * @return True when entry succesfully added. False otherwise
+     */
+
+    public static boolean writeKeyStoreEntry(String alias, File keystorefile,
+        String keystorePass, String keyPass, byte[] ... entry)
+    {
+        if (entry.length > 0) {
+
+            byteArrays.Builder contentBuilder = byteArrays.newBuilder();
+
+            for (byte[] e : entry) {
+                byteArray buf = byteArray.newBuilder()
+                        .setVal(ByteString.copyFrom(e))
+                        .build();
+
+                contentBuilder.addVals(buf);
+            }
+
+            byteArrays content = contentBuilder.build();
+
+            try {
+
+                KeyStore store = KeyStore.getInstance("PKCS12");
+                if (!keystorefile.exists()) {
+                    store.load(null, keystorePass.toCharArray());
+                } else {
+                    int n = (int) keystorefile.length();
+                    if (n > 0) {
+                        byte[] buf = new byte[n];
+                        DataInputStream dis = new DataInputStream(new FileInputStream(keystorefile));
+                        dis.readFully(buf);
+                        dis.close();
+                        store.load(new ByteArrayInputStream(buf), keystorePass.toCharArray());
+                    } else {
+                        store.load(null, keystorePass.toCharArray());
+                    }
+                }
+
+                String contentValue = Base64.getEncoder().encodeToString(content.toByteArray());
+
+                // prepare key entry
+                SecretKeyFactory factory = SecretKeyFactory.getInstance("PBE");
+                SecretKey keyEntry = factory.generateSecret(new PBEKeySpec(contentValue.toCharArray()));
+
+                // save entry to keystore
+                KeyStore.PasswordProtection keyStorePP = new KeyStore.PasswordProtection(keyPass.toCharArray());
+                store.setEntry(alias, new KeyStore.SecretKeyEntry(keyEntry), keyStorePP);
+
+                // Update keystore file
+                FileOutputStream fos = new FileOutputStream(keystorefile);
+                store.store(fos, keystorePass.toCharArray());
+                fos.close();
                 return true;
 
             } catch (IOException | KeyStoreException | CertificateException | NoSuchAlgorithmException | InvalidKeySpecException e) {
