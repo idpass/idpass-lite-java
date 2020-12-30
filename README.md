@@ -16,7 +16,7 @@ A Java wrapper for the [idpass-lite](https://github.com/idpass/idpass-lite) libr
 
 ## Installation
 
-Declare Maven Central repository in the dependency configuration, then add this library in the dependencies. Here's an example using `build.gradle`:
+Declare Maven Central repository in the dependency configuration, then add this library in the dependencies. An example using `build.gradle`:
 
 ```groovy
 repositories {
@@ -31,7 +31,24 @@ dependencies {
 
 ## Usage
 
-To begin, we create an instance of the `IDPassReader` class. This is going to need some keys and certificates so we define these as well.
+To begin, we import the different classes from the library that we want to use:
+
+```java
+import org.api.proto.Certificates;
+import org.api.proto.Ident;
+import org.api.proto.KeySet;
+import org.api.proto.byteArray;
+import org.idpass.lite.Card;
+import org.idpass.lite.IDPassHelper;
+import org.idpass.lite.IDPassReader;
+import org.idpass.lite.proto.Date;
+import org.idpass.lite.proto.*;
+import org.idpass.lite.test.utils.Helper;
+```
+
+Refer to the [API Reference](https://github.com/idpass/idpass-lite-java/wiki/API-Reference) for documentation about the available classes.
+
+We then create an instance of the `IDPassReader` class. This is going to need some keys and certificates so we define those as well.
 
 ```java
 // Generate cryptographic keys and initialize a keyset using these keys
@@ -66,7 +83,7 @@ InputStream inputStream = new FileInputStream(p12File);
 IDPassReader reader = new IDPassReader("default", inputStream, "changeit", "changeit");
 ```
 
-Once we have an `IDPassReader` object, we can then use it to generate a secure and biometrically-binding **ID PASS Lite** QR code identity card:
+Once we have an `IDPassReader` instance, we can then use it to generate a secure and biometrically-binding **ID PASS Lite** QR code identity card:
 
 ```java
 // Scan photo of card ID owner
@@ -89,14 +106,18 @@ Ident ident = Ident.newBuilder()
 
 // Generate a secure ID PASS Lite ID
 Card card = reader.newCard(ident, certchain);
+```
 
-// Render the ID PASS Lite ID as a secure QR code
+The following are some examples of what can be done with the generated ID PASS Lite card. Refer to the [API Reference](https://github.com/idpass/idpass-lite-java/wiki/API-Reference) for more documentation.
+
+```java
+// (1) Render the ID PASS Lite ID as a secure QR code image
 BufferedImage qrCode = Helper.toBufferedImage(card);
 
-// Scan the generated ID PASS Lite QR code with the reader
+// (2) Scan the generated ID PASS Lite QR code with the reader
 Card readCard = reader.open(Helper.scanQRCode(qrCode));
 
-// Biometrically authenticate into ID PASS Lite QR code ID using face recognition
+// (3) Biometrically authenticate into ID PASS Lite QR code ID using face recognition
 readCard.authenticateWithFace(photo);
 
 // Private identity details shall be available when authenticated
