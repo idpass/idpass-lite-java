@@ -20,8 +20,6 @@ package org.idpass.lite.test;
 
 import com.google.protobuf.ByteString;
 import com.google.zxing.*;
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
-import com.google.zxing.common.HybridBinarizer;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
 import org.api.proto.KeySet;
@@ -35,6 +33,7 @@ import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.exceptions.NotVerifiedException;
 import org.idpass.lite.proto.Date;
 import org.idpass.lite.proto.*;
+import org.idpass.lite.test.utils.QRCodeImageScanner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -53,38 +52,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-/**
- * The QRCodeImageScanner externalizes the zxing dependency outside
- * of idpass-lite-java jar library.
- */
-
-class QRCodeImageScanner implements Function<BufferedImage, byte[]> {
-    @Override
-    public byte[] apply(BufferedImage img) {
-
-        LuminanceSource source = new BufferedImageLuminanceSource(img);
-        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-
-        byte[] card;
-
-        try {
-            Result result = new MultiFormatReader().decode(bitmap);
-            Map m = result.getResultMetadata();
-
-            if (m.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
-                List L = (List) m.get(ResultMetadataType.BYTE_SEGMENTS);
-                card = (byte[]) L.get(0);
-            } else {
-                card = result.getText().getBytes();
-            }
-        } catch (com.google.zxing.NotFoundException e) {
-            return null;
-        }
-
-        return card;
-    }
-}
 
 public class TestCases {
     // QR code scanner with zxing dependency in test cases only
@@ -170,46 +137,53 @@ public class TestCases {
 
 
     @Test
-    public void testcreateCard2WithCertificates()
+    public void testCreateCardWithCertificates()
             throws IOException, IDPassException {
         byte[] rootKey = IDPassReader.generateSecretSignatureKey();
 
+        // Create a root key to be configured in the ID PASS reader
         Certificate rootCert = IDPassReader.generateRootCertificate(rootKey);
-        Certificate signerFromRootCert = IDPassReader.generateChildCertificate(rootKey, publicVerificationKey); // very important
-
         Certificates rootCertificates = Certificates.newBuilder().addCert(rootCert).build();
 
         IDPassReader reader = new IDPassReader(m_keyset, rootCertificates);
 
-        //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
+        // Create the content of a new card
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
         Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
 
+        // Create the intermediate certificate that has been signed by the root key
+        Certificate signerFromRootCert = IDPassReader.generateChildCertificate(rootKey, publicVerificationKey); // very important
         Certificates certs = Certificates.newBuilder().addCert(signerFromRootCert).build();
+
+        // Create the new card
         Card card = reader.newCard(ident, certs);
 
+        //try to re-open the card
         Card cardOK = reader.open(card.asBytes());
         assertNotNull(cardOK);
-
         assertTrue(card.verifyCertificate());
-
         card.authenticateWithPIN("1234");
         assertTrue(card.verifyCertificate());
 
+        // try to open the card with a random root certificate
         byte[] signer1 = IDPassReader.generateSecretSignatureKey();
         Certificate signer1RootCert = IDPassReader.generateRootCertificate(signer1);
-
         Certificates rootCertificates1 = Certificates.newBuilder().addCert(signer1RootCert).build();
 
         IDPassReader reader2 = new IDPassReader(m_keyset, rootCertificates1);
 
+        //Check if opening the card fail
         try {
             reader2.open(card.asBytes());
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
 
+        //Opening should work if we skip the certificate verification
         Card card2 = reader2.open(card.asBytes(), true);
-
+        assertFalse(card2.verifyCertificate());
+        card.authenticateWithPIN("1234");
+        assertEquals("John", card.getGivenName());
+        assertFalse(card2.verifyCertificate());
     }
 
     @Test
