@@ -34,10 +34,7 @@ import org.idpass.lite.exceptions.NotVerifiedException;
 import org.idpass.lite.proto.Date;
 import org.idpass.lite.proto.*;
 import org.idpass.lite.test.utils.QRCodeImageScanner;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -137,6 +134,7 @@ public class TestCases {
 
 
     @Test
+    @DisplayName("Check that root and intermediate certificates are verified when opening a card")
     public void testCreateCardWithCertificates()
             throws IOException, IDPassException {
         byte[] rootKey = IDPassReader.generateSecretSignatureKey();
@@ -158,7 +156,7 @@ public class TestCases {
         // Create the new card
         Card card = reader.newCard(ident, certs);
 
-        //try to re-open the card
+        //try to re-open the card using the previous reader object (and root certificate)
         Card cardOK = reader.open(card.asBytes());
         assertNotNull(cardOK);
         assertTrue(card.verifyCertificate());
@@ -172,13 +170,13 @@ public class TestCases {
 
         IDPassReader reader2 = new IDPassReader(m_keyset, rootCertificates1);
 
-        //Check if opening the card fail
+        //Check that the opening of the card fail ad the root certificate cannot be checked
         try {
             reader2.open(card.asBytes());
             assertTrue(false);
         } catch (InvalidCardException ignored) {}
 
-        //Opening should work if we skip the certificate verification
+        //Check that the opening of the card work if we skip the certificate verification
         Card card2 = reader2.open(card.asBytes(), true);
         assertFalse(card2.verifyCertificate());
         card.authenticateWithPIN("1234");
