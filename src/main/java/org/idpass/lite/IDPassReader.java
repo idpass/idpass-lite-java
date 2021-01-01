@@ -724,11 +724,19 @@ public class IDPassReader {
         }
     }
 
-    public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childSecretKey)
+    /**
+     *
+     * @param parentSecretKey A ED25519 private key
+     * @param childPublicKey An ED25519 public key
+     * @return
+     * @throws IDPassException Standard exception
+     */
+
+    public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childPublicKey)
             throws IDPassException
     {
         try {
-            Certificate c = Certificate.parseFrom(generate_child_certificate(parentSecretKey, childSecretKey));
+            Certificate c = Certificate.parseFrom(generate_child_certificate(parentSecretKey, childPublicKey));
             return c;
         } catch (InvalidProtocolBufferException e) {
             throw new IDPassException("protobuf::parseFrom");
