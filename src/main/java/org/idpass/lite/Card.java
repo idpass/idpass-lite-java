@@ -228,7 +228,7 @@ public class Card {
                 throw new InvalidCardException();
             }
         }
-        return this.cardPublicKey;
+        return this.cardPublicKey.clone();
     }
 
     public String getUIN() {
@@ -284,7 +284,7 @@ public class Card {
      * @return Returns byte[] array representation of this card
      */
     public byte[] asBytes() {
-        return this.cardAsByte;
+        return this.cardAsByte.clone();
     }
 
     /**

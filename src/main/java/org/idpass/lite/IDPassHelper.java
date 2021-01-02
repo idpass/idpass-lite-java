@@ -38,6 +38,16 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 
 public class IDPassHelper {
+    public static ByteString generateEncryptionKeyAsByteString()
+    {
+        return ByteString.copyFrom(IDPassReader.generateEncryptionKey());
+    }
+
+    public static ByteString generateSecretSignatureKeyAsByteString()
+    {
+        return ByteString.copyFrom(IDPassReader.generateSecretSignatureKey());
+    }
+
     // Helper method: For quick generation of needed encryption key
     public static byte[] generateEncryptionKey()
     {
