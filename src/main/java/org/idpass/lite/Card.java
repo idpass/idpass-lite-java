@@ -47,9 +47,21 @@ public class Card {
     private boolean isAuthenticated = false;
     private byte[] cardPublicKey = null;
     private byte[] cardAsByte = null;
+    private boolean scaledQR = false;
 
     private HashMap<String, Object> cardDetails = new HashMap<String, Object>();
     private HashMap<String, String> cardExtras = new HashMap<String, String>();
+
+    /**
+     * Use to generate either a scaled-up QR code image or not. A scaled-up QR code image file is
+     * more challenging to read by Zxing. For test cases purposes, the default
+     * is an unscaled QR code.
+     * @param scaledQR True will generate a scaled-up QR code.
+     */
+
+    public void setScaledQR(boolean scaledQR) {
+        this.scaledQR = scaledQR;
+    }
 
     /**
      * Returns publicly visible details. Returns
@@ -292,7 +304,8 @@ public class Card {
      * @return Returns a QR Code containing the card's data
      */
     public BufferedImage asQRCode() {
-        return this.reader.getQRCode(this.cardAsByte);
+        return scaledQR ? this.reader.getQRCode(this.cardAsByte) :
+                this.reader.getQRCodeNoScale(this.cardAsByte);
     }
 
     /**

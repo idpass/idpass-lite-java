@@ -270,8 +270,7 @@ public class TestCases {
         try {
             // Check that card2 is not able to authenticate
             card2.authenticateWithPIN("1234");
-            assertTrue(false);
-        } catch (CardVerificationException ignored) {}
+        } catch (CardVerificationException ignored) {assertTrue(false);}
     }
 
 

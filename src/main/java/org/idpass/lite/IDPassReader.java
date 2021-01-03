@@ -639,6 +639,47 @@ public class IDPassReader {
     }
 
     /**
+     * A 1 pixel-per-module unscaled QR code image file.
+     * Scaled-up n pixels-per-module image files are challenging
+     * to read by Zxing and can sometimes cause false alert test
+     * case error. This helper method is used for test cases.
+     * @param buf Binary blob of data
+     * @return Returns a 1 pixel per module QR code image file
+     */
+
+    protected BufferedImage getQRCodeNoScale(byte[] buf)
+    {
+        BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
+
+        int qrpixels_len = qrpixels.length() - 1; // always substract by 1
+        double sidelen = Math.sqrt(qrpixels_len);
+        if ((sidelen - Math.floor(sidelen)) != 0) {
+            // if qrpixels_len is not a perfect
+            // square number, then something is wrong
+            return null;
+        }
+
+        int qrsidelen = (int) sidelen;
+
+        BufferedImage qrcode = new BufferedImage(
+                qrsidelen,
+                qrsidelen,
+                BufferedImage.TYPE_INT_RGB);
+
+        for (int y = 0; y < qrsidelen; y++) {
+            for (int x = 0; x < qrsidelen; x++) {
+                if (qrpixels.get(x*qrsidelen + y)) {
+                    qrcode.setRGB(x, y, Color.BLACK.getRGB());
+                } else {
+                    qrcode.setRGB(x, y, Color.WHITE.getRGB());
+                }
+            }
+        }
+
+        return qrcode;
+    }
+
+    /**
      * Returns an XML SVG format QR code representation of buf.
      * @param buf The binary blob to be encoded into a QR code.
      * @return Returns an XML SVG vector graphics format
