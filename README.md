@@ -29,6 +29,8 @@ dependencies {
 }
 ```
 
+If you want to build this library from source, instructions to do so can be found in the [Building from source](https://github.com/idpass/idpass-lite-java/wiki/Building-from-source) wiki page.
+
 ## Usage
 
 To begin, we import the different classes from the library that we want to use:
