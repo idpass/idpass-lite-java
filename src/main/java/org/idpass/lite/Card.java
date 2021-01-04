@@ -47,20 +47,36 @@ public class Card {
     private boolean isAuthenticated = false;
     private byte[] cardPublicKey = null;
     private byte[] cardAsByte = null;
-    private boolean scaledQR = false;
+    private int scale = 1;  // scale of 1 is best for unit tests
+    private int margin = 0; // no margin is best for unit tests
 
     private HashMap<String, Object> cardDetails = new HashMap<String, Object>();
     private HashMap<String, String> cardExtras = new HashMap<String, String>();
 
     /**
-     * Use to generate either a scaled-up QR code image or not. A scaled-up QR code image file is
-     * more challenging to read by Zxing. For test cases purposes, the default
-     * is an unscaled QR code.
-     * @param scaledQR True will generate a scaled-up QR code.
+     * Sets the number of pixels per module to scale up the QR code image. A
+     * value of 3 is visually fine.
+     *
+     * @param scale Number of pixels per module
      */
 
-    public void setScaledQR(boolean scaledQR) {
-        this.scaledQR = scaledQR;
+    public void setScale(int scale) {
+        if (scale > 0) {
+            this.scale = scale;
+        }
+    }
+
+    /**
+     * Sets the required QR code quite zone or margin so the QR code
+     * is distinguised from its surrounding. A value of 2 fine.
+     *
+     * @param margin
+     */
+
+    public void setMargin(int margin) {
+        if (margin > 0) {
+            this.margin = margin;
+        }
     }
 
     /**
@@ -304,8 +320,7 @@ public class Card {
      * @return Returns a QR Code containing the card's data
      */
     public BufferedImage asQRCode() {
-        return scaledQR ? this.reader.getQRCode(this.cardAsByte) :
-                this.reader.getQRCodeNoScale(this.cardAsByte);
+        return this.reader.getQRCode(this.cardAsByte, scale, margin);
     }
 
     /**

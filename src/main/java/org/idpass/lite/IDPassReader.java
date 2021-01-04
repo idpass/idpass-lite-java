@@ -581,98 +581,46 @@ public class IDPassReader {
     }
 
     /**
-     *  Given any arbitrary content inside buf, this method returns
-     *  its QR code binary representation.
-     * @param buf Any arbitrary content
-     * @return Return a standard Java image object
+     * Renders a QR code image of a data array. Visually, a scale of 3
+     * and margin of 2 are good settings. However, for unit testing
+     * purposes, the default settings is recommended for Zxing to
+     * perfectly read test QR codes as an image file.
+     *
+     * @param buf The data byte array
+     * @param scale The number of pixels per module to scale up.
+     * @param margin Margin around the QR code.
+     * @return
      */
-    protected BufferedImage getQRCode(byte[] buf)
+
+    protected BufferedImage getQRCode(byte[] buf, int scale, int margin)
     {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
 
         int qrpixels_len = qrpixels.length() - 1; // always substract by 1
         double sidelen = Math.sqrt(qrpixels_len);
         if ((sidelen - Math.floor(sidelen)) != 0) {
-            // if qrpixels_len is not a perfect
-            // square number, then something is wrong
-            return null;
-        }
-
-        // https://www.qrcode.com/en/howto/code.html
-        int margin = 4;
-        int scale = 3;
-        int qrsidelen = (int) sidelen;
-        int scaledSizeLen = qrsidelen * scale;
-        boolean flag = false;
-
-        BufferedImage qrcode = new BufferedImage(
-                scaledSizeLen + margin*2,
-                scaledSizeLen + margin*2,
-                BufferedImage.TYPE_INT_RGB);
-
-        int qrHeight = qrcode.getHeight();
-        int qrWidth = qrcode.getWidth();
-
-        for (int x = 0, idx = 0; x < qrWidth; x++) {
-            for (int y = 0; y < qrHeight; y++) {
-                if (x < margin || y < margin ||
-                    x >= (qrWidth - margin) || y >= (qrHeight - margin))
-                {
-                    qrcode.setRGB(x, y, Color.WHITE.getRGB());
-                    continue;
-                } else {
-                    if ((y-margin) % scale == 0) {
-                        flag = qrpixels.get(idx++);
-                    }
-                    qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() : Color.WHITE.getRGB());
-                }
-            }
-
-            if (x >= margin || x < (qrWidth - margin)) {
-                if ((x-margin) == 0 || (x-margin) % scale != 0) {
-                    idx = ((x-margin) / scale) * qrsidelen;
-                }
-            }
-        }
-
-        return qrcode;
-    }
-
-    /**
-     * A 1 pixel-per-module unscaled QR code image file.
-     * Scaled-up n pixels-per-module image files are challenging
-     * to read by Zxing and can sometimes cause false alert test
-     * case error. This helper method is used for test cases.
-     * @param buf Binary blob of data
-     * @return Returns a 1 pixel per module QR code image file
-     */
-
-    protected BufferedImage getQRCodeNoScale(byte[] buf)
-    {
-        BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
-
-        int qrpixels_len = qrpixels.length() - 1; // always substract by 1
-        double sidelen = Math.sqrt(qrpixels_len);
-        if ((sidelen - Math.floor(sidelen)) != 0) {
-            // if qrpixels_len is not a perfect
-            // square number, then something is wrong
+            // if qrpixels_len is not a perfect square number, then something is wrong
             return null;
         }
 
         int qrsidelen = (int) sidelen;
 
         BufferedImage qrcode = new BufferedImage(
-                qrsidelen,
-                qrsidelen,
+                (qrsidelen + margin*2) * scale,
+                (qrsidelen + margin*2) * scale,
                 BufferedImage.TYPE_INT_RGB);
 
-        for (int y = 0; y < qrsidelen; y++) {
-            for (int x = 0; x < qrsidelen; x++) {
-                if (qrpixels.get(x*qrsidelen + y)) {
-                    qrcode.setRGB(x, y, Color.BLACK.getRGB());
+        for (int y = 0; y < qrcode.getHeight(); y++) {
+            for (int x = 0; x < qrcode.getWidth(); x++) {
+                int p = x/scale - margin;
+                int q = y/scale - margin;
+                boolean flag;
+                if (p >= 0 && q >= 0 && p < qrsidelen && q < qrsidelen) {
+                    flag = qrpixels.get(p + q*qrsidelen);
                 } else {
-                    qrcode.setRGB(x, y, Color.WHITE.getRGB());
+                    flag = false;
                 }
+                qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() : Color.WHITE.getRGB());
             }
         }
 

@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -54,8 +53,8 @@ public class NarrativeTestCases {
     }
 
     @Test
-    @DisplayName("Test cases that are not using certificates")
-    public void test1() throws IDPassException {
+    @DisplayName("Testing two readers opening a card without a certificate")
+    public void two_readers_without_certificate() throws IDPassException {
 
         KeySet ks1 = KeySet.newBuilder()
             .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
@@ -66,41 +65,40 @@ public class NarrativeTestCases {
         IDPassReader reader1 = new IDPassReader(ks1, null);
 
         // Generate an ID PASS lite card without an attached certificate(s)
-        Card card1 = reader1.newCard(m_ident, null);
+        Card card = reader1.newCard(m_ident, null);
 
-        // Since card1 is created from reader1, then reader1
-        // can open card1 successfully
-        assertNotNull(reader1.open(card1.asBytes()));
+        // Re-opening the card with the same reader
+        assertNotNull(reader1.open(card.asBytes()));
 
         // But a tampered card1 could not be opened.
         assertThrows(InvalidCardException.class, () -> {
-            byte[] buf = card1.asBytes();
+            byte[] buf = card.asBytes();
             buf[8] = 'x'; // tamper value of one byte to a different value
             reader1.open(buf);
         });
 
         // We can check that card1 has no attached certificate(s)
-        assertFalse(card1.hasCertificate());
+        assertFalse(card.hasCertificate());
 
         // Because card1 has no attached certificate, so no certificate verification is possible.
-        assertFalse(card1.verifyCertificate());
+        assertFalse(card.verifyCertificate());
 
         // However, card1's signature can be computed against its contents.
         // And if card1's signer key is in reader1's trusted verification keys, then
         // card1's signature is valid
-        assertTrue(card1.verifyCardSignature());
+        assertTrue(card.verifyCardSignature());
 
         // All detail fields are hidden by default prior to authentication
-        assertEquals(card1.getDetails().getSurName(),"");
-        assertEquals(card1.getDetails().getGivenName(),"");
-        assertEquals(card1.getDetails().getFullName(),"");
+        assertEquals("",card.getDetails().getSurName());
+        assertEquals("",card.getDetails().getGivenName());
+        assertEquals("",card.getDetails().getFullName());
 
-        card1.authenticateWithPIN("1234");
+        card.authenticateWithPIN("1234");
 
         // All detail fields are now visible after authentication
-        assertEquals(card1.getDetails().getSurName(),m_ident.getSurName());
-        assertEquals(card1.getDetails().getGivenName(),m_ident.getGivenName());
-        assertEquals(card1.getDetails().getFullName(),m_ident.getFullName());
+        assertEquals(m_ident.getSurName(),card.getDetails().getSurName());
+        assertEquals(m_ident.getGivenName(),card.getDetails().getGivenName());
+        assertEquals(m_ident.getFullName(),card.getDetails().getFullName());
 
         ////////////// Let us create a second reader2 with different keyset ////////////////
 
@@ -115,13 +113,13 @@ public class NarrativeTestCases {
         // However card1's signer key is missing in reader2's trusted verification keys.
         // Therefore, reader2 cannot open card1.
         assertThrows(InvalidCardException.class,() ->
-            reader2.open(card1.asBytes())
+            reader2.open(card.asBytes())
         );
     }
 
     @Test
     @DisplayName("A reader with no configured root certificate cannot create a card with certificate")
-    public void test2() throws IDPassException {
+    public void reader_with_no_certificate() throws IDPassException {
         byte[] sk = IDPassHelper.generateSecretSignatureKey();
 
         KeySet ks = KeySet.newBuilder()
@@ -137,7 +135,7 @@ public class NarrativeTestCases {
         IDPassReader reader = new IDPassReader(ks, null);
 
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
-                Arrays.copyOfRange(sk, 32, 64));
+                IDPassHelper.getPublicKey(sk));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
 
         // Therefore, the reader cannot generate a card, and throws an exception.
@@ -149,7 +147,7 @@ public class NarrativeTestCases {
     @Test
     @DisplayName("A reader configured with a root certificate cannot create a " +
             "card with a certificate that cannot anchor to the reader's root certificate")
-    public void test3() throws IDPassException {
+    public void create_card_using_reader_with_certificate() throws IDPassException {
 
         byte[] sk = IDPassHelper.generateSecretSignatureKey();
 
@@ -162,15 +160,15 @@ public class NarrativeTestCases {
         Certificate rootcert = IDPassReader.generateRootCertificate(rootkey1);
         Certificates rootcerts = Certificates.newBuilder().addCert(rootcert).build();
 
-        byte[] rootkey2 = IDPassHelper.generateSecretSignatureKey();
-
         // Notice that the reader is initialized with a certificate from rootkey1. Whereas,
         // certchain is a certificate that is anchored from rootkey2.
 
         IDPassReader reader = new IDPassReader(ks, rootcerts);
 
+        byte[] rootkey2 = IDPassHelper.generateSecretSignatureKey();
+
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey2,
-                Arrays.copyOfRange(sk, 32, 64));
+                IDPassHelper.getPublicKey(sk));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
 
         // Therefore, the reader cannot generate a card, and throws an exception
@@ -180,8 +178,8 @@ public class NarrativeTestCases {
     }
 
     @Test
-    @DisplayName("Two readers with same encryption key only")
-    public void test4() throws IDPassException {
+    @DisplayName("Card read using two readers having same encryption key and different signature key.")
+    public void two_readers_same_encryptionkey() throws IDPassException {
 
         ByteString encryptionKey = IDPassHelper.generateEncryptionKeyAsByteString();
 
@@ -206,7 +204,7 @@ public class NarrativeTestCases {
         // Notice now that reader1 and reader2 have the same encryption key but
         // different ED25519 signature key.
 
-        // And that reader2 cannot open card1 wither skip certificate flag is true or false.
+        // And that reader2 cannot open card1 whether skip certificate flag is true or false.
         // Do observe that this boolean flag is irrelevant since card1 has no attached
         // certificate and both readers don't have configured root certificates either.
         assertThrows(InvalidCardException.class, () ->
@@ -224,8 +222,8 @@ public class NarrativeTestCases {
     }
 
     @Test
-    @DisplayName("Same as test4, but this time certificates are used")
-    public void test5() throws IDPassException {
+    @DisplayName("Card read using two readers having same encryption key, different signature key and with certificate")
+    public void two_readers_same_encryptionkey_with_certificate() throws IDPassException {
         ByteString encryptionKey = IDPassHelper.generateEncryptionKeyAsByteString();
         byte[] sk = IDPassHelper.generateSecretSignatureKey();
 
@@ -242,7 +240,7 @@ public class NarrativeTestCases {
 
         /////////////// create intermediate certificate ////////////////////
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
-                Arrays.copyOfRange(sk, 32, 64));
+                IDPassHelper.getPublicKey(sk));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
         //////////////////////////////////////////////////////////////////////////////
 
@@ -312,8 +310,8 @@ public class NarrativeTestCases {
     }
 
     @Test
-    @DisplayName("Two readers sharing same encryption key can open a card generated by the other")
-    public void test6() throws IDPassException {
+    @DisplayName("Two readers with same encryption key can open a card generated by the other")
+    public void read_card_between_readers_same_encryptionkey() throws IDPassException {
         ByteString encryptionKey = IDPassHelper.generateEncryptionKeyAsByteString();
         byte[] sk = IDPassHelper.generateSecretSignatureKey();
 
@@ -330,7 +328,7 @@ public class NarrativeTestCases {
 
         /////////////// create intermediate certificate ////////////////////
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
-                Arrays.copyOfRange(sk, 32, 64));
+                IDPassHelper.getPublicKey(sk));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
         //////////////////////////////////////////////////////////////////////////////
 
@@ -363,10 +361,10 @@ public class NarrativeTestCases {
         // reader1 is configured to generate cards with given name publicly visible.
         Card card2 = reader2.open(card1.asBytes(), true);
         assertNotNull(card2);
-        assertEquals(card2.getDetails().getGivenName(), m_ident.getGivenName());
+        assertEquals(m_ident.getGivenName(),card2.getDetails().getGivenName());
 
         // Other fields are not visible prior to authentication
-        assertEquals(card2.getDetails().getSurName(), "");
+        assertEquals("", card2.getDetails().getSurName());
 
         // However, card2 cannot be authenticated because reader2 has no root certificate
         // to verify card2's certificate
@@ -377,7 +375,7 @@ public class NarrativeTestCases {
         // Therefore, only reader1 can fully worked on the card
         Card card3 = reader1.open(card2.asBytes());
         card3.authenticateWithPIN("1234");
-        assertEquals(card3.getDetails().getFullName(), m_ident.getFullName());
+        assertEquals(m_ident.getFullName(), card3.getDetails().getFullName());
     }
 
     @Test

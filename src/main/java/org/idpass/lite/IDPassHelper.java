@@ -24,6 +24,7 @@ import com.google.protobuf.Descriptors;
 import org.api.proto.byteArray;
 import org.api.proto.byteArrays;
 import org.idpass.lite.exceptions.IDPassException;
+import org.idpass.lite.exceptions.InvalidKeyException;
 import org.idpass.lite.proto.CardDetails;
 import org.idpass.lite.proto.Pair;
 import org.idpass.lite.proto.PostalAddress;
@@ -38,6 +39,18 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 
 public class IDPassHelper {
+    /**
+     * Get the public key from an ED25519 key
+     * @param ed25519key An ED25519 key
+     * @return Returns the public key
+     * @throws InvalidKeyException If not an ED25519 expected key length
+     */
+    public static byte[] getPublicKey(byte[] ed25519key) throws InvalidKeyException {
+        if (ed25519key.length != 64) {
+            throw new InvalidKeyException("Not an ED25519 secret key");
+        }
+        return Arrays.copyOfRange(ed25519key, 32, 64);
+    }
     public static ByteString generateEncryptionKeyAsByteString()
     {
         return ByteString.copyFrom(IDPassReader.generateEncryptionKey());
