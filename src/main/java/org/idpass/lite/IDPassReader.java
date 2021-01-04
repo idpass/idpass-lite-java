@@ -593,7 +593,9 @@ public class IDPassReader {
      * @throws InvalidCardException Invalid QR code byte arrays
      */
 
-    protected BufferedImage getQRCode(byte[] buf, int scale, int margin) throws InvalidCardException {
+    protected BufferedImage getQRCode(byte[] buf, int scale, int margin)
+        throws InvalidCardException
+    {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
 
         int qrpixels_len = qrpixels.length() - 1; // always substract by 1
@@ -606,21 +608,24 @@ public class IDPassReader {
         int qrsidelen = (int) sidelen;
 
         BufferedImage qrcode = new BufferedImage(
-                (qrsidelen + margin*2) * scale,
-                (qrsidelen + margin*2) * scale,
-                BufferedImage.TYPE_INT_RGB);
+            (qrsidelen + margin*2) * scale,
+            (qrsidelen + margin*2) * scale,
+            BufferedImage.TYPE_INT_RGB);
 
         for (int y = 0; y < qrcode.getHeight(); y++) {
             for (int x = 0; x < qrcode.getWidth(); x++) {
-                int p = x/scale - margin;
-                int q = y/scale - margin;
-                boolean flag;
-                if (p >= 0 && q >= 0 && p < qrsidelen && q < qrsidelen) {
-                    flag = qrpixels.get(p + q*qrsidelen);
-                } else {
-                    flag = false;
+                int innerX = x/scale - margin;
+                int innerY = y/scale - margin;
+                boolean flag = false;
+
+                if (innerX >= 0 && innerX < qrsidelen &&
+                    innerY >= 0 && innerY < qrsidelen)
+                {
+                    flag = qrpixels.get(innerX + innerY*qrsidelen);
                 }
-                qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() : Color.WHITE.getRGB());
+
+                qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() :
+                                           Color.WHITE.getRGB());
             }
         }
 
