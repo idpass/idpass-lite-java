@@ -319,7 +319,7 @@ public class Card {
      *
      * @return Returns a QR Code containing the card's data
      */
-    public BufferedImage asQRCode() {
+    public BufferedImage asQRCode() throws InvalidCardException {
         return this.reader.getQRCode(this.cardAsByte, scale, margin);
     }
 
@@ -520,7 +520,7 @@ public class Card {
         File outfile = new File(filename);
         try {
             ImageIO.write(asQRCode(), "png", outfile);
-        } catch (IOException e) {
+        } catch (IOException | InvalidCardException e) {
             return false;
         }
 
@@ -533,7 +533,7 @@ public class Card {
         File outfile = new File(filename);
         try {
             ImageIO.write(asQRCode(), "jpg", outfile);
-        } catch (IOException e) {
+        } catch (IOException | InvalidCardException e) {
             return false;
         }
 

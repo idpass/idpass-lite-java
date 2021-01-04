@@ -589,18 +589,18 @@ public class IDPassReader {
      * @param buf The data byte array
      * @param scale The number of pixels per module to scale up.
      * @param margin Margin around the QR code.
-     * @return
+     * @return Returns a QR code image
+     * @throws InvalidCardException Invalid QR code byte arrays
      */
 
-    protected BufferedImage getQRCode(byte[] buf, int scale, int margin)
-    {
+    protected BufferedImage getQRCode(byte[] buf, int scale, int margin) throws InvalidCardException {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
 
         int qrpixels_len = qrpixels.length() - 1; // always substract by 1
         double sidelen = Math.sqrt(qrpixels_len);
         if ((sidelen - Math.floor(sidelen)) != 0) {
             // if qrpixels_len is not a perfect square number, then something is wrong
-            return null;
+            throw new InvalidCardException("Invalid QR code byte arrays");
         }
 
         int qrsidelen = (int) sidelen;
