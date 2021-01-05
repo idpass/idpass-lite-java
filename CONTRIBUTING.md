@@ -1,6 +1,6 @@
 # Contributing to ID PASS Lite Java
 
-Thank you for your interest to contribute to ID PASS Lite! We want to make contributing to this project as easy as possible, whether it's:
+Thank you for your interest to contribute to ID PASS Lite Java! We want to make contributing to this project as easy as possible, whether it's:
 
 - Reporting a bug
 - Discussing the current state of the code
