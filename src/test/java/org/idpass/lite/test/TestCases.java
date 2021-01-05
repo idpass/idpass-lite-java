@@ -1604,8 +1604,17 @@ public class TestCases {
         Card card = reader.newCard(ident,certchain);
 
         // Write the ID PASS lite card to file system as a secure QR code image
-        card.saveToPNG("florence_idpass.png");
-        card.saveToSVG("florence_idpass.svg");
+        File outPNG = File.createTempFile("outPNG",".png");
+        File outSVG = File.createTempFile("outSVG",".svg");
+
+        card.saveToPNG(new FileOutputStream(outPNG));
+        card.saveToSVG(new FileOutputStream(outSVG));
+
+        assertTrue(outPNG.exists() && outPNG.length() > 0);
+        assertTrue(outSVG.exists() && outSVG.length() > 0);
+
+        outPNG.delete();
+        outSVG.delete();
     }
 
     @Test

@@ -31,6 +31,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
@@ -502,12 +503,10 @@ public class Card {
         return flag;
     }
 
-    public boolean saveToSVG(String filename)
+    public boolean saveToSVG(OutputStream outfile)
     {
-        File outfile = new File(filename);
         try {
-            Files.write(outfile.toPath(),
-                asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
+            outfile.write(asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             return false;
         }
@@ -515,9 +514,8 @@ public class Card {
         return true;
     }
 
-    public boolean saveToPNG(String filename)
+    public boolean saveToPNG(OutputStream outfile)
     {
-        File outfile = new File(filename);
         try {
             ImageIO.write(asQRCode(), "png", outfile);
         } catch (IOException | InvalidCardException e) {
