@@ -29,9 +29,7 @@ import org.idpass.lite.proto.IDPassCards;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.util.Arrays;
@@ -257,9 +255,10 @@ public class IDPassReader {
             if (card != null) {
                 return this.open(card);
             }
+            throw new IDPassException("QR code scanner error");
         }
 
-        return null;
+        throw new IDPassException("QR code scanner missing");
     }
 
     public Card open(BufferedImage bufferedImage, boolean skipCertificateVerfication)
@@ -271,9 +270,10 @@ public class IDPassReader {
             if (card != null) {
                 return this.open(card, skipCertificateVerfication);
             }
+            throw new IDPassException("QR code scanner error");
         }
 
-        return null;
+        throw new IDPassException("QR code scanner missing");
     }
 
     /**
@@ -761,14 +761,14 @@ public class IDPassReader {
         return add_certificates(ctx, certs.toByteArray());
     }
 
-    public boolean saveConfiguration(String alias, String keystorepath, String password)
+    public boolean saveConfiguration(String alias, File keystoreFile, String keystorePass, String keyPass)
     {
-        IDPassHelper.writeKeyStoreEntry(alias + "_keyset",
-                keystorepath, password, m_keyset.toByteArray());
+        IDPassHelper.writeKeyStoreEntry(alias + "_keyset",keystoreFile,
+                keystorePass, keyPass, m_keyset.toByteArray());
 
         if (m_rootcertificates != null) {
             IDPassHelper.writeKeyStoreEntry(alias + "_rootcertificates",
-                    keystorepath, password, m_rootcertificates.toByteArray());
+                    keystoreFile, keystorePass, keyPass, m_rootcertificates.toByteArray());
         }
 
         return true;

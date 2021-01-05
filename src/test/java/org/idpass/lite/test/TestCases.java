@@ -33,7 +33,6 @@ import org.idpass.lite.exceptions.NotVerifiedException;
 import org.idpass.lite.proto.Date;
 import org.idpass.lite.proto.*;
 import org.idpass.lite.test.utils.Helper;
-import org.idpass.lite.test.utils.QRCodeImageScanner;
 import org.junit.jupiter.api.*;
 
 import javax.imageio.ImageIO;
@@ -46,15 +45,12 @@ import java.security.SecureRandom;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestCases {
-    // QR code scanner with zxing dependency in test cases only
-    Function<BufferedImage, byte[]> qrImageScanner = new QRCodeImageScanner();
 
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
@@ -699,7 +695,7 @@ public class TestCases {
         // Initialize reader with test keyset and no root certificate
         IDPassReader reader = new IDPassReader(m_keyset, null);
         // Configure a QR code scanner that the reader will use during scanning
-        reader.setQrImageScanner(qrImageScanner);
+        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Create a test ID PASS lite card
         Card card = newTestCard(reader);
@@ -957,7 +953,7 @@ public class TestCases {
         // and no root certificate
         IDPassReader reader = new IDPassReader(keySet, null);
         // Set a QR code image scanner that the reader will use during scanning
-        reader.setQrImageScanner(qrImageScanner);
+        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Fill-up ident data structure with personal details of an identity to register
 
@@ -1115,14 +1111,14 @@ public class TestCases {
         ImageIO.write(card.asQRCode(), "jpg", outputfile);
 
         // Persist the reader's configuration to a keystore file
-        reader.saveConfiguration("test", "reader1.cfg", "changeit");
+        reader.saveConfiguration("test", new File("reader1.cfg"), "changeit", "changeit");
 
         // We can also save other blobs of data to the keystore file
         IDPassHelper.writeKeyStoreEntry(
-            "rootcertificatesprivatekeys","reader1.cfg.p12", "changeit", m_rootkey);
+            "rootcertificatesprivatekeys",new File("reader1.cfg.p12"), "changeit", "changeit", m_rootkey);
 
         IDPassHelper.writeKeyStoreEntry(
-            "intermedcertificatesprivatekeys","reader1.cfg.p12", "changeit", signaturekey);
+            "intermedcertificatesprivatekeys",new File("reader1.cfg.p12"), "changeit", "changeit", signaturekey);
     }
 
     @Test
@@ -1136,7 +1132,7 @@ public class TestCases {
         // Initialize reader with the loaded keyset. No root certificates is used.
         IDPassReader reader = new IDPassReader(keyset, null);
         // Configure a QR scanner that the reader will use during scanning
-        reader.setQrImageScanner(qrImageScanner);
+        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Load a test QR code image file with no certificate
         File qrFile = new File(String.valueOf(Paths.get("testdata/image.jpg")));
@@ -1187,7 +1183,7 @@ public class TestCases {
         // Initialize reader from the loaded byte arrays for keyset and certificates
         IDPassReader reader = new IDPassReader(keyset, rootcerts);
         // Configure a QR code scanner that the reader will use during scanning
-        reader.setQrImageScanner(qrImageScanner);
+        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Load a test QR code image file
         File qrcodeId = new File(String.valueOf(Paths.get("testdata/card_with_cert.jpg")));
@@ -1216,7 +1212,7 @@ public class TestCases {
             // Initialize reader using keys from a keystore file
             IDPassReader reader = new IDPassReader("default", "testdata/reader.cfg.p12", "changeit");
             // Configure a QR code scanner that the reader will use to scan
-            reader.setQrImageScanner(qrImageScanner);
+            reader.setQrImageScanner(Helper.qrImageScanner);
 
             // Read a test QR code file
             File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
@@ -1251,7 +1247,7 @@ public class TestCases {
             // Initialize reader from a keystore file using InputStream
             IDPassReader reader = new IDPassReader("default", is, "changeit", "changeit");
             // Configure a QR code scanner that the reader will use during scanning
-            reader.setQrImageScanner(qrImageScanner);
+            reader.setQrImageScanner(Helper.qrImageScanner);
 
             // Read a test QR code file
             File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
@@ -1328,7 +1324,7 @@ public class TestCases {
         // First, we initialize the reader with our test keys from the keystore file
         IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
         // Configure a QR code scanner that the reader will use to scan
-        reader.setQrImageScanner(qrImageScanner);
+        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Next, we prepare the QR code for reading. This is just a standard Java image load
         BufferedImage qrCodeImage = ImageIO.read(
@@ -1378,7 +1374,7 @@ public class TestCases {
 
         // Let us read the same QR code ID using a reader that is initialized with entirely different keys
         IDPassReader reader2 = new IDPassReader("default", "testdata/reader.cfg.p12","changeit");
-        reader2.setQrImageScanner(qrImageScanner);
+        reader2.setQrImageScanner(Helper.qrImageScanner);
 
         // Because reader2 has different keys configuration,
         // then it is not able to render (or open) the QR code ID into a card
@@ -1428,7 +1424,7 @@ public class TestCases {
         // Using the root certificate(s) from a previous reader and combined with a different keyset, let us
         // initialize a new reader3 instance
         IDPassReader reader3 = new IDPassReader(m_keyset, rootcerts);
-        reader3.setQrImageScanner(qrImageScanner);
+        reader3.setQrImageScanner(Helper.qrImageScanner);
 
         // Because reader3 is initialized with proper root certificate(s),
         // it is able to open (or render) the QR code into a Card.
@@ -1478,7 +1474,7 @@ public class TestCases {
         // Initialize reader with test keyset and root certificates
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
         // Configure a QR code scanner the reader will use to scan a QR code
-        reader.setQrImageScanner(qrImageScanner);
+        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Configure reader to set some detail fields as publicly visible
         reader.setDetailsVisible(
@@ -1534,7 +1530,7 @@ public class TestCases {
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
 
         // Configure a QR code image scanner into the reader
-        reader.setQrImageScanner(qrImageScanner);
+        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Configure some detail fields to be publicly visible
         reader.setDetailsVisible(

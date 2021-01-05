@@ -11,12 +11,19 @@ import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
 import org.idpass.lite.proto.*;
+import org.idpass.lite.test.utils.Helper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -42,10 +49,6 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * 6) Each test case that requires identity information shall use the pre-populated
  *    and fixed m_ident data structure.
- *
- * 7) An ED25519 key shall take the variable name sk, and its public component as pk.
- *    If more than one of them is required in a test case, then they take the variable names
- *    sk1, sk2 ... sk<n>.
  *
  * 8) The variable name leafcert is specially designated to the certificate of a reader's pk
  *    where pk ∈ KeySet::signaturekey
@@ -155,11 +158,10 @@ public class NarrativeTestCases {
     @Test
     @DisplayName("A reader with no configured root certificate cannot create a card with certificate")
     public void reader_with_no_certificate() throws IDPassException {
-        byte[] sk = IDPassHelper.generateSecretSignatureKey();
 
         KeySet ks = KeySet.newBuilder()
                 .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
-                .setSignatureKey(ByteString.copyFrom(sk))
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
         byte[] rootkey = IDPassHelper.generateSecretSignatureKey();
@@ -170,7 +172,7 @@ public class NarrativeTestCases {
         IDPassReader reader = new IDPassReader(ks, null);
 
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
-                IDPassHelper.getPublicKey(sk));
+                IDPassHelper.getPublicKey(ks.getSignatureKey().toByteArray()));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
 
         // Therefore, the reader cannot generate a card, and throws an exception.
@@ -184,11 +186,9 @@ public class NarrativeTestCases {
             "card with a certificate that cannot anchor to the reader's root certificate")
     public void create_card_using_reader_with_certificate() throws IDPassException {
 
-        byte[] sk = IDPassHelper.generateSecretSignatureKey();
-
         KeySet ks = KeySet.newBuilder()
                 .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
-                .setSignatureKey(ByteString.copyFrom(sk))
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
         byte[] rootkey1 = IDPassHelper.generateSecretSignatureKey();
@@ -203,7 +203,7 @@ public class NarrativeTestCases {
         byte[] rootkey2 = IDPassHelper.generateSecretSignatureKey();
 
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey2,
-                IDPassHelper.getPublicKey(sk));
+                IDPassHelper.getPublicKey(ks.getSignatureKey().toByteArray()));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
 
         // Therefore, the reader cannot generate a card, and throws an exception
@@ -216,10 +216,8 @@ public class NarrativeTestCases {
     @DisplayName("Card read using two readers having same encryption key and different signature key.")
     public void two_readers_same_encryptionkey() throws IDPassException {
 
-        ByteString encryptionKey = IDPassHelper.generateEncryptionKeyAsByteString();
-
         KeySet ks1 = KeySet.newBuilder()
-                .setEncryptionKey(encryptionKey)
+                .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
                 .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
@@ -229,7 +227,7 @@ public class NarrativeTestCases {
         Card card1 = reader1.newCard(m_ident, null);
 
         KeySet ks2 = KeySet.newBuilder()
-                .setEncryptionKey(encryptionKey)
+                .setEncryptionKey(ks1.getEncryptionKey())
                 .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
@@ -259,12 +257,10 @@ public class NarrativeTestCases {
     @Test
     @DisplayName("Card read using two readers having same encryption key, different signature key and with certificate")
     public void two_readers_same_encryptionkey_with_certificate() throws IDPassException {
-        ByteString encryptionKey = IDPassHelper.generateEncryptionKeyAsByteString();
-        byte[] sk = IDPassHelper.generateSecretSignatureKey();
 
         KeySet ks1 = KeySet.newBuilder()
-                .setEncryptionKey(encryptionKey)
-                .setSignatureKey(ByteString.copyFrom(sk))
+                .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
         ////////////// create a root certificate /////////////////
@@ -278,7 +274,7 @@ public class NarrativeTestCases {
 
         /////////////// create intermediate certificate ////////////////////
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
-                IDPassHelper.getPublicKey(sk));
+                IDPassHelper.getPublicKey(ks1.getSignatureKey().toByteArray()));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
         //////////////////////////////////////////////////////////////////////////////
 
@@ -286,7 +282,7 @@ public class NarrativeTestCases {
         Card card1 = reader1.newCard(m_ident, certchain);
 
         KeySet ks2 = KeySet.newBuilder()
-                .setEncryptionKey(encryptionKey)
+                .setEncryptionKey(ks1.getEncryptionKey())
                 .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
@@ -324,7 +320,7 @@ public class NarrativeTestCases {
         //////////////////////////////////////////////////////////////////////////////
 
         KeySet ks3 = KeySet.newBuilder()
-                .setEncryptionKey(encryptionKey)
+                .setEncryptionKey(ks1.getEncryptionKey())
                 .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
@@ -348,12 +344,10 @@ public class NarrativeTestCases {
     @Test
     @DisplayName("Two readers with same encryption key can open a card generated by the other")
     public void read_card_between_readers_same_encryptionkey() throws IDPassException {
-        ByteString encryptionKey = IDPassHelper.generateEncryptionKeyAsByteString();
-        byte[] sk = IDPassHelper.generateSecretSignatureKey();
 
         KeySet ks1 = KeySet.newBuilder()
-                .setEncryptionKey(encryptionKey)
-                .setSignatureKey(ByteString.copyFrom(sk))
+                .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
         ////////////// create a root certificate /////////////////
@@ -364,7 +358,7 @@ public class NarrativeTestCases {
 
         /////////////// create intermediate certificate ////////////////////
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
-                IDPassHelper.getPublicKey(sk));
+                IDPassHelper.getPublicKey(ks1.getSignatureKey().toByteArray()));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
         //////////////////////////////////////////////////////////////////////////////
 
@@ -375,7 +369,7 @@ public class NarrativeTestCases {
         Card card1 = reader1.newCard(m_ident, certchain);
 
         KeySet ks2 = KeySet.newBuilder()
-                .setEncryptionKey(encryptionKey)
+                .setEncryptionKey(ks1.getEncryptionKey())
                 .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
@@ -417,14 +411,10 @@ public class NarrativeTestCases {
     @Test
     @DisplayName("Reading a card with a revoked attached certificate")
     public void card_certificate_is_revoked() throws IDPassException {
-        byte[] encryptionkey = IDPassReader.generateEncryptionKey();
-        byte[] sk = new byte[64];
-        byte[] pk = new byte[32];
-        IDPassReader.generateSecretSignatureKeypair(pk, sk);
 
         KeySet ks = KeySet.newBuilder()
-                .setEncryptionKey(ByteString.copyFrom(encryptionkey))
-                .setSignatureKey(ByteString.copyFrom(sk))
+                .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
                 .build();
 
         ////////////// create a root certificate /////////////////
@@ -435,8 +425,9 @@ public class NarrativeTestCases {
 
         IDPassReader reader1 = new IDPassReader(ks, rootcertsA);
 
-        /////////////// create intermediate certificate /////////////////////////
-        Certificate leafcert = IDPassReader.generateChildCertificate(rootkey, pk);
+        /////////// create intermediate certificate /////////////////////////
+        Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
+                IDPassHelper.getPublicKey(ks.getSignatureKey().toByteArray()));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
         //////////////////////////////////////////////////////////////////////////////
 
@@ -458,8 +449,64 @@ public class NarrativeTestCases {
     }
 
     @Test
-    @DisplayName("TODO")
-    public void test8() {
+    @DisplayName("Save a reader's configuration to a PKCS12 file")
+    public void save_reader_configuration() throws IDPassException, IOException {
 
+        File p12File = File.createTempFile("readerconfig", ".p12");
+
+        KeySet ks = KeySet.newBuilder()
+                .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
+                .build();
+
+        ////////////// create a root certificate /////////////////
+        byte[] rootkey = IDPassHelper.generateSecretSignatureKey();
+        Certificate rootcert = IDPassReader.generateRootCertificate(rootkey);
+        Certificates rootcertsA = Certificates.newBuilder().addCert(rootcert).build();
+        /////////////////////////////////////////////////////////////////////////////
+
+        // Initialize reader from test keyset and root certificate
+        IDPassReader reader1 = new IDPassReader(ks, rootcertsA);
+
+        /////////////// create intermediate certificate ////////////////////
+        Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
+                IDPassHelper.getPublicKey(ks.getSignatureKey().toByteArray()));
+        Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
+        //////////////////////////////////////////////////////////////////////////////
+
+        Card card1 = reader1.newCard(m_ident, certchain);
+
+        // Save the card to file system as a QR code image
+        File qrFile = File.createTempFile("qrcode", ".jpg");
+        ImageIO.write(card1.asQRCode(), "jpg", qrFile);
+
+        card1.authenticateWithPIN("1234");
+
+        // Persist the reader's configuration to a keystore file
+        String keystorePass = Helper.randomString(10);
+        String keyPass = Helper.randomString(10);
+        String keyAliasPrefix = "test";
+        reader1.saveConfiguration(keyAliasPrefix, p12File, keystorePass, keyPass);
+
+        // We can also save other blobs of data to the keystore file
+        IDPassHelper.writeKeyStoreEntry("rootcertificatesprivatekeys",
+                p12File, keystorePass, keyPass, rootkey);
+
+        IDPassHelper.writeKeyStoreEntry("intermedcertificatesprivatekeys",
+                p12File, keystorePass, keyPass, IDPassHelper.getPublicKey(ks.getSignatureKey().toByteArray()));
+
+        InputStream is = new FileInputStream(p12File);
+        IDPassReader reader2 = new IDPassReader(keyAliasPrefix,is,keystorePass, keyPass);
+        reader2.setQrImageScanner(Helper.qrImageScanner);
+
+        BufferedImage qrPic = ImageIO.read(qrFile);
+        Card card2 = reader2.open(qrPic);
+        card2.authenticateWithPIN("1234");
+
+        assertEquals(m_ident.getFullName(),card2.getDetails().getFullName());
+        assertArrayEquals(card1.asBytes(), card2.asBytes());
+
+        p12File.delete();
+        qrFile.delete();
     }
 }

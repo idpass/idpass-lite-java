@@ -1,8 +1,13 @@
 package org.idpass.lite.test.utils;
 
+import java.awt.image.BufferedImage;
 import java.util.Random;
+import java.util.function.Function;
 
 public class Helper {
+
+    // QR code scanner with zxing dependency in test cases only
+    public static Function<BufferedImage, byte[]> qrImageScanner = new QRCodeImageScanner();
 
     /**
      * A helper method to generate random alphananumeric
