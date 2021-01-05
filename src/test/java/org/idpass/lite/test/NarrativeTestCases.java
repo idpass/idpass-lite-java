@@ -20,6 +20,41 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Each narrative test case shall adhere to the following conventions:
+ *
+ * 1) Each test case is narrated to describe its flow. Attendant circumstances
+ *    are described to provide additional context.
+ *
+ * 2) Each test case pivots around one theme.
+ *
+ * 3) KeySet objects shall use the variable names ks1, ks2, ... ks<n> when
+ *    several of them are required in a particular test case. Otherwise,
+ *    the singular variable name ks is used.
+ *
+ * 4) IDPassReader objects shall use the variable names reader1,reader2, ... reader<n> when
+ *    several of them are required in a particular test case. Otherwise,
+ *    the singular variable name reader is used.
+ *
+ * 5) Card objects shall use the variable names card1, card2, ... card<n> when
+ *    several of them are required in a particular test case. Otherwise, the singular
+ *    variable name card is used.
+ *
+ * 6) Each test case that requires identity information shall use the pre-populated
+ *    and fixed m_ident data structure.
+ *
+ * 7) An ED25519 key shall take the variable name sk, and its public component as pk.
+ *    If more than one of them is required in a test case, then they take the variable names
+ *    sk1, sk2 ... sk<n>.
+ *
+ * 8) The variable name leafcert is specially designated to the certificate of a reader's pk
+ *    where pk ∈ KeySet::signaturekey
+ *
+ * 9) Take note of the following phrases (attached vs configured) convention and their meanings:
+ *    - Certificate attached in a card     = Is the intermediate certificate embedded inside the QR code.
+ *    - Certificate configured in a reader = Is the self-signed root certificate set in a reader instance
+ */
+
 public class NarrativeTestCases {
 
     // Protobuf data structure that is filled with identity details.
@@ -238,14 +273,15 @@ public class NarrativeTestCases {
         Certificates rootcertsA = Certificates.newBuilder().addCert(rootcert).build();
         /////////////////////////////////////////////////////////////////////////////
 
+        // Initialize our first reader with root certificate
+        IDPassReader reader1 = new IDPassReader(ks1, rootcertsA);
+
         /////////////// create intermediate certificate ////////////////////
         Certificate leafcert = IDPassReader.generateChildCertificate(rootkey,
                 IDPassHelper.getPublicKey(sk));
         Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
         //////////////////////////////////////////////////////////////////////////////
 
-        // Initialize our first reader with root certificate
-        IDPassReader reader1 = new IDPassReader(ks1, rootcertsA);
         // Generate card1 using reader1
         Card card1 = reader1.newCard(m_ident, certchain);
 
@@ -379,20 +415,51 @@ public class NarrativeTestCases {
     }
 
     @Test
-    @DisplayName("TODO")
-    public void test7() {
+    @DisplayName("Reading a card with a revoked attached certificate")
+    public void card_certificate_is_revoked() throws IDPassException {
+        byte[] encryptionkey = IDPassReader.generateEncryptionKey();
+        byte[] sk = new byte[64];
+        byte[] pk = new byte[32];
+        IDPassReader.generateSecretSignatureKeypair(pk, sk);
 
+        KeySet ks = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(encryptionkey))
+                .setSignatureKey(ByteString.copyFrom(sk))
+                .build();
+
+        ////////////// create a root certificate /////////////////
+        byte[] rootkey = IDPassHelper.generateSecretSignatureKey();
+        Certificate rootcert = IDPassReader.generateRootCertificate(rootkey);
+        Certificates rootcertsA = Certificates.newBuilder().addCert(rootcert).build();
+        /////////////////////////////////////////////////////////////////////////////
+
+        IDPassReader reader1 = new IDPassReader(ks, rootcertsA);
+
+        /////////////// create intermediate certificate /////////////////////////
+        Certificate leafcert = IDPassReader.generateChildCertificate(rootkey, pk);
+        Certificates certchain = Certificates.newBuilder().addCert(leafcert).build();
+        //////////////////////////////////////////////////////////////////////////////
+
+        Card card = reader1.newCard(m_ident, certchain);
+
+        // Revoke a certificate public key. This revocation is shared by all reader instances
+        IDPassReader.addRevokedKey(IDPassHelper.getPublicKey(rootkey)); // ∀
+
+        // The card can no longer be authenticated because its certificate (or chain) has been revoked
+        assertThrows(CardVerificationException.class, () -> card.authenticateWithPIN("1234"));
+
+        IDPassReader reader2 = new IDPassReader(ks, rootcertsA);
+
+        // A card with a revoked certificate (or chain) cannot be opened by default
+        assertThrows(InvalidCardException.class, () -> reader2.open(card.asBytes()));
+
+        // But it can be opened if certificate check is skipped
+        assertDoesNotThrow(() -> reader2.open(card.asBytes(), true));
     }
 
     @Test
     @DisplayName("TODO")
     public void test8() {
-
-    }
-
-    @Test
-    @DisplayName("TODO")
-    public void test9() {
 
     }
 }
