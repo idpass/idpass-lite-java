@@ -54,7 +54,7 @@ public class TestCases {
 
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
-    byte[] publicVerificationKey = Arrays.copyOfRange(signaturekey, 32, 64);
+    byte[] publicVerificationKey = IDPassHelper.getPublicKey(signaturekey);
 
     KeySet m_keyset = KeySet.newBuilder()
             .setEncryptionKey(ByteString.copyFrom(encryptionkey))
@@ -66,7 +66,7 @@ public class TestCases {
 
     byte[] encryptionkey2    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey2     = IDPassHelper.generateSecretSignatureKey();
-    byte[] publicVerificationKey2 = Arrays.copyOfRange(signaturekey2, 32, 64);
+    byte[] publicVerificationKey2 = IDPassHelper.getPublicKey(signaturekey2);
     KeySet m_keyset2 = KeySet.newBuilder()
             .setEncryptionKey(ByteString.copyFrom(encryptionkey2))
             .setSignatureKey(ByteString.copyFrom(signaturekey2))
@@ -348,10 +348,10 @@ public class TestCases {
         Certificate signer0RootCert = IDPassReader.generateRootCertificate(signer0);
         Certificate signer1RootCert = IDPassReader.generateRootCertificate(signer1);
 
-        Certificate signer2From1Cert = IDPassReader.generateChildCertificate(signer1, Arrays.copyOfRange(signer2,32,64));
-        Certificate signer3From2Cert = IDPassReader.generateChildCertificate(signer2, Arrays.copyOfRange(signer3,32,64));
+        Certificate signer2From1Cert = IDPassReader.generateChildCertificate(signer1, IDPassHelper.getPublicKey(signer2));
+        Certificate signer3From2Cert = IDPassReader.generateChildCertificate(signer2, IDPassHelper.getPublicKey(signer3));
 
-        Certificate signer4From3Cert = IDPassReader.generateChildCertificate(signer3, Arrays.copyOfRange(signer4,32,64));
+        Certificate signer4From3Cert = IDPassReader.generateChildCertificate(signer3, IDPassHelper.getPublicKey(signer4));
         Certificate signer4From0Cert = IDPassReader.generateChildCertificate(signer0, publicVerificationKey); // very important
 
         Certificates rootcertificates = Certificates.newBuilder()
@@ -457,7 +457,7 @@ public class TestCases {
         // Generate test keys
         byte[] newEncryptionkey = IDPassHelper.generateEncryptionKey();
         byte[] newSignatureKey = IDPassHelper.generateSecretSignatureKey();
-        byte[] newVerificationKey = Arrays.copyOfRange(newSignatureKey, 32, 64);
+        byte[] newVerificationKey = IDPassHelper.getPublicKey(newSignatureKey);
 
         //Test with new keys for everything
         KeySet newKeyset = KeySet.newBuilder()
@@ -723,7 +723,7 @@ public class TestCases {
         // Generate test keys
         byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
         byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
-        byte[] wrongVerificationkey = Arrays.copyOfRange(IDPassHelper.generateSecretSignatureKey(),32,64);
+        byte[] wrongVerificationkey = IDPassHelper.getPublicKey(IDPassHelper.generateSecretSignatureKey());
 
         // Initialize reader with default test keyset and root certificates
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
@@ -783,7 +783,7 @@ public class TestCases {
         // Generate test keys
         byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
         byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
-        byte[] otherVerificationkey = Arrays.copyOfRange(IDPassHelper.generateSecretSignatureKey(),32,64);
+        byte[] otherVerificationkey = IDPassHelper.getPublicKey(IDPassHelper.generateSecretSignatureKey());
 
         KeySet.Builder ksBuilder = KeySet.newBuilder()
                 .setEncryptionKey(ByteString.copyFrom(encryptionkey))
@@ -896,10 +896,10 @@ public class TestCases {
 
         byte[] intermedKey1 = IDPassReader.generateSecretSignatureKey();
         Certificate intermedCert1 = IDPassReader.generateChildCertificate(rootKey1,
-                Arrays.copyOfRange(intermedKey1, 32, 64));
+                IDPassHelper.getPublicKey(intermedKey1));
 
         Certificate intermedCert2 = IDPassReader.generateChildCertificate(intermedKey1,
-                Arrays.copyOfRange(signatureKey, 32, 64));
+                IDPassHelper.getPublicKey(signatureKey));
 
         Certificates intermedCerts = Certificates.newBuilder()
                 .addCert(intermedCert1)
@@ -1030,8 +1030,8 @@ public class TestCases {
 
         byte[] intermedKey1 = IDPassReader.generateSecretSignatureKey();
         Certificate intermedCert1 = IDPassReader.generateChildCertificate(rootKey,
-                Arrays.copyOfRange(intermedKey1, 32, 64));
-        Certificate intermedCert2 = IDPassReader.generateChildCertificate(intermedKey1, Arrays.copyOfRange(signatureKey, 32, 64));
+                IDPassHelper.getPublicKey(intermedKey1));
+        Certificate intermedCert2 = IDPassReader.generateChildCertificate(intermedKey1, IDPassHelper.getPublicKey(signatureKey));
         Certificates intermedCerts = Certificates.newBuilder()
                                         .addCert(intermedCert1)
                                         .addCert(intermedCert2)
@@ -1044,7 +1044,7 @@ public class TestCases {
         assertTrue(reader.addIntermediateCertificates(intermedCerts));
 
         // Revoke one certificate in the chain
-        IDPassReader.addRevokedKey(Arrays.copyOfRange(intermedKey1, 32, 64));
+        IDPassReader.addRevokedKey(IDPassHelper.getPublicKey(intermedKey1));
 
         // Check can no longer add a certificate chain when one of them is revoked
         assertFalse(reader.addIntermediateCertificates(intermedCerts));
@@ -1596,7 +1596,7 @@ public class TestCases {
         byte[] intermed_key = entry[0];
 
         // Create a certchain that will be attached in the rendered card
-        byte[] verification_key = Arrays.copyOfRange(intermed_key, 32, 64);
+        byte[] verification_key = IDPassHelper.getPublicKey(intermed_key);
         Certificate childcert = IDPassReader.generateChildCertificate(root_key, verification_key);
         Certificates certchain = Certificates.newBuilder().addCert(childcert).build();
 
