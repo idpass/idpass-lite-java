@@ -21,11 +21,8 @@ package org.idpass.lite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
+import org.idpass.lite.exceptions.*;
 import org.idpass.lite.proto.*;
-import org.idpass.lite.exceptions.CardVerificationException;
-import org.idpass.lite.exceptions.IDPassException;
-import org.idpass.lite.exceptions.InvalidCardException;
-import org.idpass.lite.exceptions.NotVerifiedException;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -33,7 +30,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.Date;
 
@@ -252,8 +248,8 @@ public class Card {
             try {
                 IDPassCard card = SignedIDPassCard.parseFrom(decrypted).getCard();
                 byte[] card_skpk = card.getEncryptionKey().toByteArray(); // private key
-                cardPublicKey = Arrays.copyOfRange(card_skpk, 32, 64); // public key
-            } catch (InvalidProtocolBufferException e) {
+                cardPublicKey = IDPassHelper.getPublicKey(card_skpk); // public key
+            } catch (InvalidProtocolBufferException | InvalidKeyException e) {
                 throw new InvalidCardException();
             }
         }

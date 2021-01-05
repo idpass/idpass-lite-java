@@ -372,7 +372,6 @@ public class TestCases {
                 .addCert(signer4From0Cert)
                 .build();
 
-        //IDPassReader.addRevokedKey(Arrays.copyOfRange(signer0,32,64));
         byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
         Ident ident = newIdentBuilder().setPhoto(ByteString.copyFrom(photo)).build();
 
