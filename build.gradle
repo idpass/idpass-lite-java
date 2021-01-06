@@ -27,8 +27,16 @@ plugins {
 ext {
     artifactId = "idpass-lite-java"
     groupId = "org.idpass"
-    version = '0.0.1-SNAPSHOT'
+    version = '0.1'
     description = "ID PASS Lite (Java) is a wrapper API of libidpasslite.so"
+}
+
+if (System.getenv('SONATYPE_USERNAME') != null) {
+    project.ext['ossrhUsername'] = System.getenv('SONATYPE_USERNAME')
+    project.ext['ossrhPassword'] = System.getenv('SONATYPE_PASSWORD')
+    project.ext['signing.secretKeyRingFile'] = System.getenv('GPG_KEYRING_FILE')
+    project.ext['signing.keyId'] = System.getenv('GPG_KEY_ID')
+    project.ext['signing.password'] =  System.getenv('GPG_KEY_PASSPHRASE')
 }
 
 repositories {
