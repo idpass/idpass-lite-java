@@ -38,6 +38,7 @@ public class Helper {
             BufferedImage qrcode = toBufferedImage(card);
             try {
                 ImageIO.write(qrcode, format, outfile);
+                return true;
             } catch (IOException e) {
                 return false;
             }
