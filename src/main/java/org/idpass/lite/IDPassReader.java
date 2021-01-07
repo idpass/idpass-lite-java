@@ -24,17 +24,15 @@ import org.api.proto.Ident;
 import org.api.proto.KeySet;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
+import org.idpass.lite.proto.CardDetails;
 import org.idpass.lite.proto.Certificate;
 import org.idpass.lite.proto.IDPassCards;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.function.Function;
 
 /**
  * Wrapper class of the libidpasslite.so shared
@@ -42,8 +40,6 @@ import java.util.function.Function;
  */
 
 public class IDPassReader {
-
-    private Function<BufferedImage, byte[]> qrImageScanner;
 
     /**
      * These constants are used to make some generalized calls into
@@ -109,10 +105,6 @@ public class IDPassReader {
 
     static {
         loaded = IDPassLoader.loadLibrary();
-    }
-
-    public void setQrImageScanner(Function<BufferedImage, byte[]> qrImageScanner) {
-        this.qrImageScanner = qrImageScanner;
     }
 
     /**
@@ -239,42 +231,6 @@ public class IDPassReader {
             return card;
     }
 
-
-    /**
-     * Read a QR code image and parse the content of a card
-     * @param bufferedImage The QR code image
-     * @return Wrapper of the card
-     * @throws IDPassException ID PASS exception
-     */
-    public Card open(BufferedImage bufferedImage)
-            throws IDPassException
-    {
-        if (qrImageScanner != null) {
-            byte[] card;
-            card = qrImageScanner.apply(bufferedImage);
-            if (card != null) {
-                return this.open(card);
-            }
-            throw new IDPassException("QR code scanner error");
-        }
-
-        throw new IDPassException("QR code scanner missing");
-    }
-
-    public Card open(BufferedImage bufferedImage, boolean skipCertificateVerfication)
-            throws IDPassException
-    {
-        if (qrImageScanner != null) {
-            byte[] card;
-            card = qrImageScanner.apply(bufferedImage);
-            if (card != null) {
-                return this.open(card, skipCertificateVerfication);
-            }
-            throw new IDPassException("QR code scanner error");
-        }
-
-        throw new IDPassException("QR code scanner missing");
-    }
 
     /**
      * Create a new ID PASS Card.
@@ -487,7 +443,24 @@ public class IDPassReader {
     private native boolean add_certificates(long ctx, byte[] intermedcerts);
     private native int verify_card_certificate(long ctx, byte[] blob);
     private native boolean verify_card_signature(long ctx, byte[] blob);
+    private static native byte[] merge_CardDetails(byte[] d1, byte[] d2);
     //=========================================================
+
+    /**
+     * Merge two CardDetails into one.
+     * @param d1 First CardDetails
+     * @param d2 Second CardDetails
+     * @return Returns a merged CardDetails
+     * @throws InvalidProtocolBufferException Invalid CardDetails
+     */
+
+    public static CardDetails mergeCardDetails(CardDetails d1, CardDetails d2)
+        throws InvalidProtocolBufferException
+    {
+        byte[] mergeBuf = merge_CardDetails(d1.toByteArray(), d2.toByteArray());
+        CardDetails merge = CardDetails.parseFrom(mergeBuf);
+        return merge;
+    }
 
     public static float compareFaceTemplates(byte[] template1, byte[] template2)
     {
@@ -587,13 +560,11 @@ public class IDPassReader {
      * perfectly read test QR codes as an image file.
      *
      * @param buf The data byte array
-     * @param scale The number of pixels per module to scale up.
-     * @param margin Margin around the QR code.
      * @return Returns a QR code image
      * @throws InvalidCardException Invalid QR code byte arrays
      */
 
-    protected BufferedImage getQRCode(byte[] buf, int scale, int margin)
+    protected BitSet getQRCode(byte[] buf)
         throws InvalidCardException
     {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
@@ -605,31 +576,7 @@ public class IDPassReader {
             throw new InvalidCardException("Invalid QR code byte arrays");
         }
 
-        int qrsidelen = (int) sidelen;
-
-        BufferedImage qrcode = new BufferedImage(
-            (qrsidelen + margin*2) * scale,
-            (qrsidelen + margin*2) * scale,
-            BufferedImage.TYPE_INT_RGB);
-
-        for (int y = 0; y < qrcode.getHeight(); y++) {
-            for (int x = 0; x < qrcode.getWidth(); x++) {
-                int innerX = x/scale - margin;
-                int innerY = y/scale - margin;
-                boolean flag = false;
-
-                if (innerX >= 0 && innerX < qrsidelen &&
-                    innerY >= 0 && innerY < qrsidelen)
-                {
-                    flag = qrpixels.get(innerX + innerY*qrsidelen);
-                }
-
-                qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() :
-                                           Color.WHITE.getRGB());
-            }
-        }
-
-        return qrcode;
+        return qrpixels;
     }
 
     /**

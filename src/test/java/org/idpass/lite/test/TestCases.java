@@ -19,6 +19,7 @@
 package org.idpass.lite.test;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
 import org.api.proto.KeySet;
@@ -694,20 +695,19 @@ public class TestCases {
         // Initialize reader with test keyset and no root certificate
         IDPassReader reader = new IDPassReader(m_keyset, null);
         // Configure a QR code scanner that the reader will use during scanning
-        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Create a test ID PASS lite card
         Card card = newTestCard(reader);
 
         // Render the ID PASS lite card as a QR code image
-        BufferedImage qrCode = card.asQRCode();
+        BufferedImage qrCode = Helper.toBufferedImage(card);
 
         // Check the QR code image size, not empty
         assertTrue(qrCode.getHeight() > 50);
         assertTrue(qrCode.getWidth() > 50);
 
         // Scan the QR code image, and skip certificate check
-        Card readCard = reader.open(qrCode, true); // HERE
+        Card readCard = reader.open(Helper.scanQRCode(qrCode), true); // HERE
 
         // Check that an ID PASS lite card is generated from the
         // scanned QR code image. And that, the two card contents match
@@ -952,7 +952,6 @@ public class TestCases {
         // and no root certificate
         IDPassReader reader = new IDPassReader(keySet, null);
         // Set a QR code image scanner that the reader will use during scanning
-        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Fill-up ident data structure with personal details of an identity to register
 
@@ -974,11 +973,11 @@ public class TestCases {
 
         // Render the ID PASS lite card object as a QR code image
 
-        BufferedImage qrCode = card.asQRCode();
+        BufferedImage qrCode = Helper.toBufferedImage(card);
 
         // Read back the QR code image to reconstruct the ID PASS lite card object
 
-        Card c = reader.open(qrCode, true); // boolean true means skip certificate check
+        Card c = reader.open(Helper.scanQRCode(qrCode), true); // boolean true means skip certificate check
 
         // Given name field is not visible prior to authentication
         assertEquals(c.getGivenName(),"");
@@ -1004,7 +1003,7 @@ public class TestCases {
     }
 
     @Test
-    @DisplayName("")
+    @DisplayName("Test revoking a certificate")
     public void testRevokedCertificate() throws IDPassException
     {
         /* Prepare the key set */
@@ -1107,7 +1106,7 @@ public class TestCases {
 
         // Save the card to file system as a QR code image
         File outputfile = new File("testqr2.jpg");
-        ImageIO.write(card.asQRCode(), "jpg", outputfile);
+        ImageIO.write(Helper.toBufferedImage(card), "jpg", outputfile);
 
         // Persist the reader's configuration to a keystore file
         reader.saveConfiguration("test", new File("reader1.cfg"), "changeit", "changeit");
@@ -1131,7 +1130,6 @@ public class TestCases {
         // Initialize reader with the loaded keyset. No root certificates is used.
         IDPassReader reader = new IDPassReader(keyset, null);
         // Configure a QR scanner that the reader will use during scanning
-        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Load a test QR code image file with no certificate
         File qrFile = new File(String.valueOf(Paths.get("testdata/image.jpg")));
@@ -1145,16 +1143,16 @@ public class TestCases {
 
         try {
             // Render an ID PASS lite card from a scanned QR code image
-            cardOriginal = reader.open(bufferedImageWithCert);
+            cardOriginal = reader.open(Helper.scanQRCode(bufferedImageWithCert));
             assertFalse(true);
         } catch (InvalidCardException e) {
             // A reader without configured root certificate must skip certificate check
             // to render a card from the QR code image
-            cardOriginal = reader.open(bufferedImageWithCert, true);
+            cardOriginal = reader.open(Helper.scanQRCode(bufferedImageWithCert), true);
         }
 
         // Render an ID PASS lite card from a scanned QR code image with no certficate
-        cardOriginal = reader.open(bufferedImageNoCert);
+        cardOriginal = reader.open(Helper.scanQRCode(bufferedImageNoCert));
 
         // Given name is not visible prior to authentication
         assertEquals(cardOriginal.getGivenName(), "");
@@ -1182,14 +1180,13 @@ public class TestCases {
         // Initialize reader from the loaded byte arrays for keyset and certificates
         IDPassReader reader = new IDPassReader(keyset, rootcerts);
         // Configure a QR code scanner that the reader will use during scanning
-        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Load a test QR code image file
         File qrcodeId = new File(String.valueOf(Paths.get("testdata/card_with_cert.jpg")));
         BufferedImage bufferedImage = ImageIO.read(qrcodeId);
 
         // Render an ID PASS lite card from the scanned QR code image
-        Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+        Card cardOriginal = reader.open(Helper.scanQRCode(bufferedImage)); // presence of correct root certs is only up to here
 
         // Hereafter, correct keyset is necessary to be able to operate on the card
 
@@ -1211,14 +1208,13 @@ public class TestCases {
             // Initialize reader using keys from a keystore file
             IDPassReader reader = new IDPassReader("default", "testdata/reader.cfg.p12", "changeit");
             // Configure a QR code scanner that the reader will use to scan
-            reader.setQrImageScanner(Helper.qrImageScanner);
 
             // Read a test QR code file
             File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
             BufferedImage bufferedImage = ImageIO.read(qrcodeId);
 
             // Read the QR code image
-            Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+            Card cardOriginal = reader.open(Helper.scanQRCode(bufferedImage)); // presence of correct root certs is only up to here
 
             // Hereafter, correct keyset is necessary to be able to operate on the card
 
@@ -1246,14 +1242,13 @@ public class TestCases {
             // Initialize reader from a keystore file using InputStream
             IDPassReader reader = new IDPassReader("default", is, "changeit", "changeit");
             // Configure a QR code scanner that the reader will use during scanning
-            reader.setQrImageScanner(Helper.qrImageScanner);
 
             // Read a test QR code file
             File qrcodeId = new File(String.valueOf(Paths.get("testdata/testqr1.jpg")));
             BufferedImage bufferedImage = ImageIO.read(qrcodeId);
 
             // Render an ID PASS lite card from a read QR code image
-            Card cardOriginal = reader.open(bufferedImage); // presence of correct root certs is only up to here
+            Card cardOriginal = reader.open(Helper.scanQRCode(bufferedImage)); // presence of correct root certs is only up to here
 
             // Hereafter, correct keyset is necessary to be able to operate on the card
 
@@ -1323,7 +1318,6 @@ public class TestCases {
         // First, we initialize the reader with our test keys from the keystore file
         IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
         // Configure a QR code scanner that the reader will use to scan
-        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Next, we prepare the QR code for reading. This is just a standard Java image load
         BufferedImage qrCodeImage = ImageIO.read(
@@ -1334,7 +1328,7 @@ public class TestCases {
         // of the root certificate(s) of the reader. If the certificate validates, the reader::open()
         // method returns a Card. The card's public region should be publicly visible. Whereas,
         // its private region shall only be visible after successfull authentication.
-        Card card0 = reader.open(qrCodeImage); // presence of correct root certs is only up to here
+        Card card0 = reader.open(Helper.scanQRCode(qrCodeImage)); // presence of correct root certs is only up to here
 
         assertEquals("MARION FLORENCE", card0.getGivenName());
         assertEquals("DUPONT", card0.getSurname());
@@ -1360,7 +1354,7 @@ public class TestCases {
 
         // The card can also be authenticated by pin code. We scan again the qrCodeImage
         // to return another card3 and authenticate against card3 via pin code
-        Card card3 = reader.open(qrCodeImage);
+        Card card3 = reader.open(Helper.scanQRCode(qrCodeImage));
 
         // As before, prior to authentication, ssNumber shall not be visible
         HashMap<String, String> card3Info = card3.getCardExtras();
@@ -1373,16 +1367,15 @@ public class TestCases {
 
         // Let us read the same QR code ID using a reader that is initialized with entirely different keys
         IDPassReader reader2 = new IDPassReader("default", "testdata/reader.cfg.p12","changeit");
-        reader2.setQrImageScanner(Helper.qrImageScanner);
 
         // Because reader2 has different keys configuration,
         // then it is not able to render (or open) the QR code ID into a card
         assertThrows(InvalidCardException.class,
-            () -> { Card card4 = reader2.open(qrCodeImage); });
+            () -> { Card card4 = reader2.open(Helper.scanQRCode(qrCodeImage)); });
 
         // However, reader2 can open the card (or render the QR code into a card)
         // if the reader skips certificate verification
-        Card card5 = reader2.open(qrCodeImage, true);
+        Card card5 = reader2.open(Helper.scanQRCode(qrCodeImage), true);
 
         // A rendered or opened card (but not yet authenticated)
         // shall have its public fields always visible. This visibility setting
@@ -1423,11 +1416,10 @@ public class TestCases {
         // Using the root certificate(s) from a previous reader and combined with a different keyset, let us
         // initialize a new reader3 instance
         IDPassReader reader3 = new IDPassReader(m_keyset, rootcerts);
-        reader3.setQrImageScanner(Helper.qrImageScanner);
 
         // Because reader3 is initialized with proper root certificate(s),
         // it is able to open (or render) the QR code into a Card.
-        Card card6 = reader3.open(qrCodeImage);
+        Card card6 = reader3.open(Helper.scanQRCode(qrCodeImage));
 
         // A succesfully opened (or rendered) card has its public fields visible. 
         // But prior to authentication, the private field ssNumber is not visible
@@ -1473,7 +1465,6 @@ public class TestCases {
         // Initialize reader with test keyset and root certificates
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
         // Configure a QR code scanner the reader will use to scan a QR code
-        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Configure reader to set some detail fields as publicly visible
         reader.setDetailsVisible(
@@ -1488,12 +1479,12 @@ public class TestCases {
         Card card = reader.newCard(ident,m_certchain);
 
         // Render the card into a QR code and save it as a scaled-up PNG file
-        BufferedImage ri = card.asQRCode();
+        BufferedImage ri = Helper.toBufferedImage(card);
         ImageIO.write(ri, "png", tempFile);
 
         // Scan back the QR code from the saved PNG file
         BufferedImage qrimage = ImageIO.read(tempFile);
-        Card idcard = reader.open(qrimage);
+        Card idcard = reader.open(Helper.scanQRCode(qrimage));
 
         // Given name field is not visible prior to authentication
         assertEquals(idcard.getGivenName(),"");
@@ -1529,7 +1520,6 @@ public class TestCases {
         IDPassReader reader = new IDPassReader(m_keyset, m_rootcerts);
 
         // Configure a QR code image scanner into the reader
-        reader.setQrImageScanner(Helper.qrImageScanner);
 
         // Configure some detail fields to be publicly visible
         reader.setDetailsVisible(
@@ -1548,7 +1538,7 @@ public class TestCases {
         BufferedImage bi = ImageIO.read(inputStream);
 
         // Scan the QR code image from first card
-        Card card2 = reader.open(bi);
+        Card card2 = reader.open(Helper.scanQRCode(bi));
 
         // Check that the generated card and the scanned card are the same
         assertNotNull(card2);
@@ -1606,8 +1596,8 @@ public class TestCases {
         File outPNG = File.createTempFile("outPNG",".png");
         File outSVG = File.createTempFile("outSVG",".svg");
 
-        card.saveToPNG(new FileOutputStream(outPNG));
-        card.saveToSVG(new FileOutputStream(outSVG));
+        Helper.saveImage(card, "png", new FileOutputStream(outPNG));
+        Helper.saveImage(card, "svg", new FileOutputStream(outSVG));
 
         assertTrue(outPNG.exists() && outPNG.length() > 0);
         assertTrue(outSVG.exists() && outSVG.length() > 0);
@@ -1740,9 +1730,10 @@ public class TestCases {
      * Merge two CardDetails into one
      */
 
+	//@Disabled
     @Test
     @DisplayName("Merge two card details into one")
-    public void testMergeDetails() {
+    public void testMergeDetails() throws InvalidProtocolBufferException {
         // Create first detail
         CardDetails d1 = CardDetails.newBuilder()
                 .setFullName("John Murdoch")
@@ -1754,7 +1745,7 @@ public class TestCases {
                 .build();
 
         // Merge the two details into one
-        CardDetails merged = IDPassHelper.mergeCardDetails(d1,d2);
+        CardDetails merged = IDPassReader.mergeCardDetails(d1,d2);
 
         // Check that merged detail should have 3 fields and that each field match values
         assertEquals(merged.getAllFields().keySet().size(), 3);
@@ -1763,7 +1754,7 @@ public class TestCases {
         assertEquals(merged.getGivenName(), "JOHN");
 
         // Merge the two details, to make sure that the order does not matter
-        merged = IDPassHelper.mergeCardDetails(d2,d1);
+        merged = IDPassReader.mergeCardDetails(d2,d1);
 
         // Check that merged detail should have 3 fields and that each field match values
         assertEquals(merged.getAllFields().keySet().size(), 3);
@@ -1781,7 +1772,7 @@ public class TestCases {
         // Add dob into d1 CardDetails
         d1 = d1.toBuilder().setDateOfBirth(dob).build();
         // Merge again the two details
-        merged = IDPassHelper.mergeCardDetails(d2,d1);
+        merged = IDPassReader.mergeCardDetails(d2,d1);
 
         // Check that merged detail should now have 4 fields and that each field match values
         assertEquals(merged.getAllFields().keySet().size(), 4);
@@ -1815,11 +1806,22 @@ public class TestCases {
             d2 = d2.toBuilder().addExtra(x).build();
         }
 
+        PostalAddress address = PostalAddress.newBuilder()
+                .addAddressLines("526 N Plymouth Blvd")
+                .addAddressLines("Los Angeles, CA US")
+                .setRegionCode("5")
+                .setLanguageCode("en")
+                .setPostalCode("90004")
+                .build();
+
+        d2 = d2.toBuilder().setPostalAddress(address).build();
+
         // Merge again the two details
-        merged = IDPassHelper.mergeCardDetails(d1,d2);
+        merged = IDPassReader.mergeCardDetails(d1,d2);
 
         // Check if every fields got merged including the merged key/value pairs
-        assertEquals(merged.getAllFields().keySet().size(), 5);
+        // and postal address
+        assertEquals(merged.getAllFields().keySet().size(), 6);
         assertEquals(merged.getFullName(), "John Murdoch");
         assertEquals(merged.getSurName(), "MURDOCH");
         assertEquals(merged.getGivenName(), "JOHN");
@@ -1837,6 +1839,9 @@ public class TestCases {
         for (Pair x : mergedExtras) {
             assertTrue(merged.getExtraList().contains(x));
         }
+
+        assertArrayEquals(merged.getPostalAddress().toByteArray(),
+                address.toByteArray());
     }
 
     /**

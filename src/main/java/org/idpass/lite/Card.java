@@ -24,12 +24,6 @@ import org.api.proto.Ident;
 import org.idpass.lite.exceptions.*;
 import org.idpass.lite.proto.*;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.Date;
 
@@ -76,6 +70,14 @@ public class Card {
         }
     }
 
+    public int getScale() {
+        return scale;
+    }
+
+    public int getMargin() {
+        return margin;
+    }
+
     /**
      * Returns publicly visible details. Returns
      * a merge of publicly visible details and
@@ -83,10 +85,10 @@ public class Card {
      * @return Identity field details
      */
 
-    public CardDetails getDetails() {
+    public CardDetails getDetails() throws InvalidProtocolBufferException {
         CardDetails details = publicCardDetails;
         if (isAuthenticated) {
-            details = IDPassHelper.mergeCardDetails(
+            details = IDPassReader.mergeCardDetails(
                 publicCardDetails, privateCardDetails);
         }
         return details;
@@ -316,8 +318,8 @@ public class Card {
      *
      * @return Returns a QR Code containing the card's data
      */
-    public BufferedImage asQRCode() throws InvalidCardException {
-        return this.reader.getQRCode(this.cardAsByte, scale, margin);
+    public BitSet asQRCode() throws InvalidCardException {
+        return this.reader.getQRCode(this.cardAsByte);
     }
 
     /**
@@ -497,40 +499,5 @@ public class Card {
         checkIsAuthenticated();
         boolean flag = reader.verifySignature(data, signature, pubkey);
         return flag;
-    }
-
-    public boolean saveToSVG(OutputStream outfile)
-    {
-        try {
-            outfile.write(asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
-        } catch (IOException e) {
-            return false;
-        }
-
-        return true;
-    }
-
-    public boolean saveToPNG(OutputStream outfile)
-    {
-        try {
-            ImageIO.write(asQRCode(), "png", outfile);
-        } catch (IOException | InvalidCardException e) {
-            return false;
-        }
-
-        return true;
-    }
-
-
-    public boolean saveToJPG(String filename)
-    {
-        File outfile = new File(filename);
-        try {
-            ImageIO.write(asQRCode(), "jpg", outfile);
-        } catch (IOException | InvalidCardException e) {
-            return false;
-        }
-
-        return true;
     }
 }
