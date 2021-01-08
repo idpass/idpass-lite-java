@@ -101,10 +101,10 @@ public class IDPassReader {
     protected KeySet m_keyset;
     protected Certificates m_rootcertificates;
 
-    private static boolean loaded;
-
     static {
-        loaded = IDPassLoader.loadLibrary();
+        if (!IDPassLoader.loadLibrary()) {
+            throw new RuntimeException("Failed to load libidpasslite.so");
+        }
     }
 
     /**
