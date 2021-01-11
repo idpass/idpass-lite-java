@@ -7,10 +7,13 @@ This is a Java wrapper of the [libidpasslite](https://github.com/idpass/idpass-l
 ![id front](testdata/idpass-lite-java-sample-front.png?raw=true "front") ![id back](testdata/idpass-lite-java-sample-back.png?raw=true "back")
 
 
-## Building
+## Building for Java `idpass-lite-java-${VERSION}.jar`
 ```bash
-./gradlew build
+./build.sh java
 ```
+## Building for Android `idpass-lite-java-${VERSION}.aar`
+```bash
+./build.sh android
 
 ## Features
 - Create card with face
@@ -34,7 +37,7 @@ repositories {
 }
 
 dependencies {
-    implementation "org.idpass:idpass-lite-java:0.0.1-SNAPSHOT"
+    implementation "org.idpass:idpass-lite-java:0.1"
     implementation 'com.google.protobuf:protobuf-java:3.12.2'
 }
 ```

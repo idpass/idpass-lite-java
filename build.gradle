@@ -27,7 +27,7 @@ plugins {
 ext {
     artifactId = "idpass-lite-java"
     groupId = "org.idpass"
-    version = '0.1'
+    version = System.getenv('VERSION')
     description = "ID PASS Lite (Java) is a wrapper API of libidpasslite.so"
 }
 
