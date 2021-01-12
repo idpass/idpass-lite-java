@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.idpass.lite">
+    package="org.idpass.smartscanner.result">
 
     <application>
-        <activity android:name=".IDPassReaderActivity"></activity>
+        <activity android:name=".IDPassResultActivity"></activity>
     </application>
 
 </manifest>

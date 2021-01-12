@@ -1,8 +1,9 @@
-package org.idpass.lite
+package org.idpass.smartscanner.result
 
 import android.app.Activity
 import android.os.Bundle
 import android.system.Os
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -13,13 +14,16 @@ import org.api.proto.byteArray
 import org.idpass.lite.exceptions.CardVerificationException
 import org.idpass.lite.exceptions.InvalidCardException
 import org.idpass.lite.exceptions.InvalidKeyException
+import org.idpass.lite.IDPassHelper
+import org.idpass.lite.IDPassReader
+import org.idpass.lite.Card
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
 //class IDPassReaderActivity : AppCompatActivity() {
-class IDPassReaderActivity : Activity() {
+class IDPassResultActivity : Activity() {
 
     val shapeData = "shape_predictor_5_face_landmarks.dat"
     val faceData = "dlib_face_recognition_resnet_model_v1.dat"
@@ -38,7 +42,7 @@ class IDPassReaderActivity : Activity() {
                 .setVal(ByteString.copyFrom(publicVerificationKey)).build())
                 .build()
 
-        private var m_reader = IDPassReader(keyset, null)
+        private var idPassReader = IDPassReader(keyset, null)
     }
 
     var m_pincode: String = ""
@@ -85,7 +89,7 @@ class IDPassReaderActivity : Activity() {
             var cardpincode = findViewById(R.id.cardpincode) as EditText
             m_pincode = cardpincode.text.toString()
             m_qrbytes?.let {
-                var qrstr = readCard(it)
+                var qrstr = readCard(idPassReader, it)
                 var tv =  (findViewById(R.id.hex) as TextView)
                 tv.setText("\n\n" + qrstr + "\n")
             }
@@ -93,14 +97,14 @@ class IDPassReaderActivity : Activity() {
 
         val intent = intent
         val qrbytes = intent.getByteArrayExtra("qrbytes")
-        var qrstr = readCard(qrbytes)
+        var qrstr = readCard(idPassReader, qrbytes)
 
         var tv =  (findViewById(R.id.hex) as TextView)
         tv.setText("\n\n" + qrstr + "\n")
 
     }
 
-    fun readCard(qrbytes: ByteArray, charsPerLine: Int = 33): String {
+    private fun readCard(idPassReader: IDPassReader, qrbytes: ByteArray, charsPerLine: Int = 33): String {
         if (charsPerLine < 4 || qrbytes.isEmpty()) {
             return ""
         }
@@ -112,10 +116,10 @@ class IDPassReaderActivity : Activity() {
 
         try {
             try {
-                card = m_reader.open(qrbytes)
+                card = idPassReader.open(qrbytes)
                 certStatus = if (card.hasCertificate()) "Verified" else "No certificate"
             } catch (ice: InvalidCardException) {
-                card = m_reader.open(qrbytes, true)
+                card = idPassReader.open(qrbytes, true)
                 certStatus = if (card.hasCertificate()) "Not Verified" else "No certificate"
             }
 
