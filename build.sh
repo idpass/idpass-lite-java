@@ -4,15 +4,15 @@
 export VERSION=0.1
 
 case "$1" in
-	java)
+	jar)
 	./gradlew build
 	;;
 
-	android)
+	aar)
 	cd android && ./gradlew build
 	;;
 
 	*)
-	echo "Unknown build target. Valid targets are: java or android"
+	echo "Unknown build target. Valid targets are: jar or aar"
 	;;
 esac
