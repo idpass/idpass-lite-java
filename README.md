@@ -9,11 +9,11 @@ This is a Java wrapper of the [libidpasslite](https://github.com/idpass/idpass-l
 
 ## Building for Java `idpass-lite-java-${VERSION}.jar`
 ```bash
-./build.sh jar
+./gradlew build
 ```
-## Building for Android `idpass-lite-java-${VERSION}.aar`
+## Building for Android `idpass-lite-java-android-${VERSION}.aar`
 ```bash
-./build.sh aar
+cd android && ./gradlew build
 ```
 
 ## Features

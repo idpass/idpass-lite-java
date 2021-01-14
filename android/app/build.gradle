@@ -4,6 +4,13 @@ plugins {
     id 'kotlin-android'
 }
 
+ext {
+    artifactId = "idpass-lite-java-android"
+    groupId = "org.idpass"
+    version = '0.1'
+    description = "ID PASS Lite (Java) Android is a wrapper API of libidpasslite.so"
+}
+
 android {
     compileSdkVersion 29
     ndkVersion "21.3.6528147"
@@ -37,7 +44,7 @@ android {
 
 	libraryVariants.all { variant ->
         variant.outputs.all {
-            outputFileName = "idpass-lite-java-${System.getenv('VERSION')}.aar"
+            outputFileName = "${project.ext.artifactId}-${project.ext.version}.aar"
         }
     }
 }
