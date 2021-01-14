@@ -1,4 +1,4 @@
-package org.idpass.lite;
+package org.idpass.lite.android;
 
 import androidx.appcompat.app.AppCompatActivity;
 

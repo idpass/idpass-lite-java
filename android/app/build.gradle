@@ -30,7 +30,8 @@ android {
         jniLibs.srcDirs = ['src/main/jniLibs']
 
         java {
-            srcDirs = ['../../src/main/java', 'app/src/main/java']
+            srcDir '../../src/main/java'
+            srcDir 'app/src/main/java'
         }
     }
 
