@@ -666,10 +666,10 @@ public class IDPassReader {
     }
 
     /**
-     *
+     * Generate child or intermediate certificate
      * @param parentSecretKey A ED25519 private key
      * @param childPublicKey An ED25519 public key
-     * @return
+     * @return Returns an intermediate certificate
      * @throws IDPassException Standard exception
      */
 

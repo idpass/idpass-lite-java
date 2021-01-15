@@ -82,11 +82,6 @@ protobuf {
     }
 }
 
-javadoc {
-    // without the -quiet option, the build fails
-    options.addStringOption('Xdoclint:none', '-quiet')
-}
-
 test {
     useJUnitPlatform()
 }

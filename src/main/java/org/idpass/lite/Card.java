@@ -61,7 +61,7 @@ public class Card {
      * Sets the required QR code quite zone or margin so the QR code
      * is distinguised from its surrounding. A value of 2 fine.
      *
-     * @param margin
+     * @param margin Count of modules for the margin
      */
 
     public void setMargin(int margin) {
@@ -70,9 +70,19 @@ public class Card {
         }
     }
 
+    /**
+     * Get the scale value
+     * @return scale
+     */
+
     public int getScale() {
         return scale;
     }
+
+    /**
+     * Get the margin value
+     * @return margin
+     */
 
     public int getMargin() {
         return margin;
@@ -83,6 +93,7 @@ public class Card {
      * a merge of publicly visible details and
      * private details if authenticated.
      * @return Identity field details
+     * @throws InvalidProtocolBufferException Protobuf error
      */
 
     public CardDetails getDetails() throws InvalidProtocolBufferException {
@@ -161,7 +172,7 @@ public class Card {
     }
 
     /**
-     *
+     * Verify card signature
      * @return True of certificate is valid
      */
     public boolean verifyCardSignature()
@@ -179,7 +190,7 @@ public class Card {
     }
 
     /**
-     *
+     * Check if card is authenticated
      * @return true if the PIN or Face has been verified
      */
 
@@ -215,7 +226,7 @@ public class Card {
     }
 
     /**
-     *
+     * Helper method
      * @param buf The byte array of the Details protobuf message
      * @throws CardVerificationException custom exception
      * @throws InvalidCardException custom exception
@@ -235,7 +246,7 @@ public class Card {
     }
 
     /**
-     *
+     * Returns public key of card
      * @return Returns the public key of the card
      * @throws NotVerifiedException custom exception
      * @throws InvalidCardException custom exception
@@ -275,7 +286,7 @@ public class Card {
     }
 
     /**
-     *
+     * Get given name
      * @return Returns givenname
      */
     public String getGivenName() {
@@ -283,7 +294,7 @@ public class Card {
     }
 
     /**
-     *
+     * Get surname
      * @return Returns owner surname
      */
     public String getSurname() {
@@ -317,6 +328,7 @@ public class Card {
     /**
      *
      * @return Returns a QR Code containing the card's data
+     * @throws InvalidCardException Invalid ID PASS Lite card
      */
     public BitSet asQRCode() throws InvalidCardException {
         return this.reader.getQRCode(this.cardAsByte);
