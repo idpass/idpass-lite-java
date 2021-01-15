@@ -20,7 +20,7 @@ Declare Maven Central repository in the dependency configuration, then add this 
 
 ```groovy
 repositories {
-  mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
