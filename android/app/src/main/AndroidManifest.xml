@@ -3,7 +3,6 @@
     package="org.idpass.lite.android">
 
     <application>
-        <activity android:name=".IDPassLiteActivity"></activity>
     </application>
 
 </manifest>
