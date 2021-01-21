@@ -241,7 +241,6 @@ public class IDPassLoader
      * @return Returns the URL of the extracted inner jar.
      * @throws IOException File error
      */
-
     public static URL doubleExtract(String[] jarinjar) throws IOException
     {
         URL outerJar = new URL(jarinjar[0] + "!/");

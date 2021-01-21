@@ -1,0 +1,2 @@
+include ':aar'
+rootProject.name = "IDPassLite"

@@ -21,18 +21,9 @@ package org.idpass.lite;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
+import org.idpass.lite.exceptions.*;
 import org.idpass.lite.proto.*;
-import org.idpass.lite.exceptions.CardVerificationException;
-import org.idpass.lite.exceptions.IDPassException;
-import org.idpass.lite.exceptions.InvalidCardException;
-import org.idpass.lite.exceptions.NotVerifiedException;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.Date;
 
@@ -47,21 +38,63 @@ public class Card {
     private boolean isAuthenticated = false;
     private byte[] cardPublicKey = null;
     private byte[] cardAsByte = null;
+    private int scale = 1;  // scale of 1 is best for unit tests
+    private int margin = 0; // no margin is best for unit tests
 
     private HashMap<String, Object> cardDetails = new HashMap<String, Object>();
     private HashMap<String, String> cardExtras = new HashMap<String, String>();
+
+    /**
+     * Sets the number of pixels per module to scale up the QR code image. A
+     * value of 3 is visually fine.
+     *
+     * @param scale Number of pixels per module
+     */
+    public void setScale(int scale) {
+        if (scale > 0) {
+            this.scale = scale;
+        }
+    }
+
+    /**
+     * Sets the required QR code quite zone or margin so the QR code
+     * is distinguised from its surrounding. A value of 2 fine.
+     *
+     * @param margin Count of modules for the margin
+     */
+    public void setMargin(int margin) {
+        if (margin > 0) {
+            this.margin = margin;
+        }
+    }
+
+    /**
+     * Get the scale value
+     * @return scale
+     */
+    public int getScale() {
+        return scale;
+    }
+
+    /**
+     * Get the margin value
+     * @return margin
+     */
+    public int getMargin() {
+        return margin;
+    }
 
     /**
      * Returns publicly visible details. Returns
      * a merge of publicly visible details and
      * private details if authenticated.
      * @return Identity field details
+     * @throws InvalidProtocolBufferException Protobuf error
      */
-
-    public CardDetails getDetails() {
+    public CardDetails getDetails() throws InvalidProtocolBufferException {
         CardDetails details = publicCardDetails;
         if (isAuthenticated) {
-            details = IDPassHelper.mergeCardDetails(
+            details = IDPassReader.mergeCardDetails(
                 publicCardDetails, privateCardDetails);
         }
         return details;
@@ -99,7 +132,6 @@ public class Card {
      * @return True Returns true if certificate chain
      * validates and verifies the IDPassCard's signature.
      */
-
     public boolean verifyCertificate()
     {
         try {
@@ -134,7 +166,7 @@ public class Card {
     }
 
     /**
-     *
+     * Verify card signature
      * @return True of certificate is valid
      */
     public boolean verifyCardSignature()
@@ -152,10 +184,9 @@ public class Card {
     }
 
     /**
-     *
+     * Check if card is authenticated
      * @return true if the PIN or Face has been verified
      */
-
     public boolean isAuthenticated() {
         return isAuthenticated;
     }
@@ -188,7 +219,7 @@ public class Card {
     }
 
     /**
-     *
+     * Helper method
      * @param buf The byte array of the Details protobuf message
      * @throws CardVerificationException custom exception
      * @throws InvalidCardException custom exception
@@ -208,7 +239,7 @@ public class Card {
     }
 
     /**
-     *
+     * Returns public key of card
      * @return Returns the public key of the card
      * @throws NotVerifiedException custom exception
      * @throws InvalidCardException custom exception
@@ -223,12 +254,12 @@ public class Card {
             try {
                 IDPassCard card = SignedIDPassCard.parseFrom(decrypted).getCard();
                 byte[] card_skpk = card.getEncryptionKey().toByteArray(); // private key
-                cardPublicKey = Arrays.copyOfRange(card_skpk, 32, 64); // public key
-            } catch (InvalidProtocolBufferException e) {
+                cardPublicKey = IDPassHelper.getPublicKey(card_skpk); // public key
+            } catch (InvalidProtocolBufferException | InvalidKeyException e) {
                 throw new InvalidCardException();
             }
         }
-        return this.cardPublicKey;
+        return this.cardPublicKey.clone();
     }
 
     public String getUIN() {
@@ -248,7 +279,7 @@ public class Card {
     }
 
     /**
-     *
+     * Get given name
      * @return Returns givenname
      */
     public String getGivenName() {
@@ -256,7 +287,7 @@ public class Card {
     }
 
     /**
-     *
+     * Get surname
      * @return Returns owner surname
      */
     public String getSurname() {
@@ -284,14 +315,15 @@ public class Card {
      * @return Returns byte[] array representation of this card
      */
     public byte[] asBytes() {
-        return this.cardAsByte;
+        return this.cardAsByte.clone();
     }
 
     /**
      *
      * @return Returns a QR Code containing the card's data
+     * @throws InvalidCardException Invalid ID PASS Lite card
      */
-    public BufferedImage asQRCode() {
+    public BitSet asQRCode() throws InvalidCardException {
         return this.reader.getQRCode(this.cardAsByte);
     }
 
@@ -300,7 +332,6 @@ public class Card {
      * the id card.
      * @return String An XML SVG vector graphics format
      */
-
     public String asQRCodeSVG() {
         return this.reader.getQRCodeAsSVG(this.cardAsByte);
     }
@@ -319,7 +350,6 @@ public class Card {
      * Return identity extra information.
      * @return Key/value pair of additional information
      */
-
     public HashMap<String, String> getCardExtras()
     {
         return cardExtras;
@@ -431,7 +461,6 @@ public class Card {
      * @return Returns the encrypted data
      * @throws NotVerifiedException Custom exception
      */
-
     public byte[] encrypt(byte[] data)
             throws NotVerifiedException
     {
@@ -449,7 +478,6 @@ public class Card {
      * @throws NotVerifiedException Custom exception
      * @throws InvalidCardException Custom exception
      */
-
     public byte[] decrypt(byte[] data)
             throws NotVerifiedException, InvalidCardException
     {
@@ -472,43 +500,5 @@ public class Card {
         checkIsAuthenticated();
         boolean flag = reader.verifySignature(data, signature, pubkey);
         return flag;
-    }
-
-    public boolean saveToSVG(String filename)
-    {
-        File outfile = new File(filename);
-        try {
-            Files.write(outfile.toPath(),
-                asQRCodeSVG().getBytes(StandardCharsets.UTF_8));
-        } catch (IOException e) {
-            return false;
-        }
-
-        return true;
-    }
-
-    public boolean saveToPNG(String filename)
-    {
-        File outfile = new File(filename);
-        try {
-            ImageIO.write(asQRCode(), "png", outfile);
-        } catch (IOException e) {
-            return false;
-        }
-
-        return true;
-    }
-
-
-    public boolean saveToJPG(String filename)
-    {
-        File outfile = new File(filename);
-        try {
-            ImageIO.write(asQRCode(), "jpg", outfile);
-        } catch (IOException e) {
-            return false;
-        }
-
-        return true;
     }
 }

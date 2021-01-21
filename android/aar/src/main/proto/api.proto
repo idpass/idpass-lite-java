@@ -1,0 +1,65 @@
+/*
+ *  Copyright (C) 2020 Newlogic Impact Lab Pte. Ltd.
+ * 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+syntax = "proto3";
+
+package api;
+option java_package = "org.api.proto";
+option java_multiple_files = true;
+
+import "idpasslite.proto";
+
+message byteArray {
+  enum Typ {
+    BLOB = 0;
+    AEADKEY = 1;
+    ED25519PUBKEY = 2;
+    ED25519PRIVKEY = 3;
+    ED25519SIGNATURE = 4;
+    PHOTO = 5;
+  }
+
+  Typ typ = 1;
+  bytes val = 2;
+}
+
+message byteArrays { repeated byteArray vals = 1; }
+
+message KeySet {
+  bytes encryptionKey = 1;
+  bytes signatureKey = 2;
+  repeated byteArray verificationKeys = 3;
+}
+
+message Certificates { repeated idpass.Certificate cert = 1; }
+
+message Ident {
+  string surName = 1;
+  string givenName = 2;
+  string placeOfBirth = 3;
+  string pin = 4;
+  idpass.Date dateOfBirth = 5;
+  byteArrays photos = 6;
+  bytes photo = 7;
+  repeated idpass.Pair privExtra = 8;
+  repeated idpass.Pair pubExtra = 9;
+  string UIN = 10;
+  string fullName = 11;
+  int32 gender = 12; // Reserved: Female = 1 / Male = 2 / Diverse = 3 // The list can then be extended as needed
+  idpass.PostalAddress postalAddress = 13;
+}
+
+message Idents { repeated Ident ident = 1; }

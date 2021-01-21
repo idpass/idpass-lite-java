@@ -24,19 +24,15 @@ import org.api.proto.Ident;
 import org.api.proto.KeySet;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
+import org.idpass.lite.proto.CardDetails;
 import org.idpass.lite.proto.Certificate;
 import org.idpass.lite.proto.IDPassCards;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.function.Function;
 
 /**
  * Wrapper class of the libidpasslite.so shared
@@ -44,8 +40,6 @@ import java.util.function.Function;
  */
 
 public class IDPassReader {
-
-    private Function<BufferedImage, byte[]> qrImageScanner;
 
     /**
      * These constants are used to make some generalized calls into
@@ -107,14 +101,10 @@ public class IDPassReader {
     protected KeySet m_keyset;
     protected Certificates m_rootcertificates;
 
-    private static boolean loaded;
-
     static {
-        loaded = IDPassLoader.loadLibrary();
-    }
-
-    public void setQrImageScanner(Function<BufferedImage, byte[]> qrImageScanner) {
-        this.qrImageScanner = qrImageScanner;
+        if (!IDPassLoader.loadLibrary()) {
+            throw new RuntimeException("Failed to load libidpasslite.so");
+        }
     }
 
     /**
@@ -145,7 +135,6 @@ public class IDPassReader {
      * @throws IDPassException Custom exception
      * @throws IOException Java exception
      */
-
     public IDPassReader(String alias, String configfile, String keystorePass)
             throws IDPassException, IOException {
 
@@ -179,7 +168,6 @@ public class IDPassReader {
      * @throws IDPassException Custom exception
      * @throws IOException Java exception
      */
-
     public IDPassReader(String alias, InputStream is, String keystorePass, String keyPass)
             throws IDPassException, IOException {
 
@@ -241,40 +229,6 @@ public class IDPassReader {
             return card;
     }
 
-
-    /**
-     * Read a QR code image and parse the content of a card
-     * @param bufferedImage The QR code image
-     * @return Wrapper of the card
-     * @throws IDPassException ID PASS exception
-     */
-    public Card open(BufferedImage bufferedImage)
-            throws IDPassException
-    {
-        if (qrImageScanner != null) {
-            byte[] card;
-            card = qrImageScanner.apply(bufferedImage);
-            if (card != null) {
-                return this.open(card);
-            }
-        }
-
-        return null;
-    }
-
-    public Card open(BufferedImage bufferedImage, boolean skipCertificateVerfication)
-            throws IDPassException
-    {
-        if (qrImageScanner != null) {
-            byte[] card;
-            card = qrImageScanner.apply(bufferedImage);
-            if (card != null) {
-                return this.open(card, skipCertificateVerfication);
-            }
-        }
-
-        return null;
-    }
 
     /**
      * Create a new ID PASS Card.
@@ -373,7 +327,6 @@ public class IDPassReader {
      * 64*2 bytes inside the QR code.
      * @return Example values are 0.42 if half mode, or 0.6 if full mode
      */
-
     public float getFaceDiffThreshold()
     {
         float facediff = 0.0f;
@@ -397,7 +350,6 @@ public class IDPassReader {
      * @param full If true, then facial template is 128 floats with 4 bytes per float.
      * Otherwise, it is 64 floats with 2 bytes per float.
      */
-
     public void setDlibDimension(boolean full)
     {
         byte[] cmd = new byte[2];
@@ -415,7 +367,6 @@ public class IDPassReader {
      * @return Returns true of facial biometry is represented in full 128 floats 4 bytes per float.
      * Otherwise, facial biometry is represented in half which is 64 floats 2 bytes per float.
      */
-
     public boolean getDlibDimension()
     {
         byte[] cmd = new byte[2];
@@ -434,7 +385,6 @@ public class IDPassReader {
      *
      * @param eccLevel Any of valid levels of QR code ECC
      */
-
     public void setQRCodeECC(int eccLevel)
     {
         byte[] cmd = new byte[2];
@@ -487,7 +437,23 @@ public class IDPassReader {
     private native boolean add_certificates(long ctx, byte[] intermedcerts);
     private native int verify_card_certificate(long ctx, byte[] blob);
     private native boolean verify_card_signature(long ctx, byte[] blob);
+    private static native byte[] merge_CardDetails(byte[] d1, byte[] d2);
     //=========================================================
+
+    /**
+     * Merge two CardDetails into one.
+     * @param d1 First CardDetails
+     * @param d2 Second CardDetails
+     * @return Returns a merged CardDetails
+     * @throws InvalidProtocolBufferException Invalid CardDetails
+     */
+    public static CardDetails mergeCardDetails(CardDetails d1, CardDetails d2)
+        throws InvalidProtocolBufferException
+    {
+        byte[] mergeBuf = merge_CardDetails(d1.toByteArray(), d2.toByteArray());
+        CardDetails merge = CardDetails.parseFrom(mergeBuf);
+        return merge;
+    }
 
     public static float compareFaceTemplates(byte[] template1, byte[] template2)
     {
@@ -581,61 +547,28 @@ public class IDPassReader {
     }
 
     /**
-     *  Given any arbitrary content inside buf, this method returns
-     *  its QR code binary representation.
-     * @param buf Any arbitrary content
-     * @return Return a standard Java image object
+     * Renders a QR code image of a data array. Visually, a scale of 3
+     * and margin of 2 are good settings. However, for unit testing
+     * purposes, the default settings is recommended for Zxing to
+     * perfectly read test QR codes as an image file.
+     *
+     * @param buf The data byte array
+     * @return Returns a QR code image
+     * @throws InvalidCardException Invalid QR code byte arrays
      */
-    protected BufferedImage getQRCode(byte[] buf)
+    protected BitSet getQRCode(byte[] buf)
+        throws InvalidCardException
     {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
 
         int qrpixels_len = qrpixels.length() - 1; // always substract by 1
         double sidelen = Math.sqrt(qrpixels_len);
         if ((sidelen - Math.floor(sidelen)) != 0) {
-            // if qrpixels_len is not a perfect
-            // square number, then something is wrong
-            return null;
+            // if qrpixels_len is not a perfect square number, then something is wrong
+            throw new InvalidCardException("Invalid QR code byte arrays");
         }
 
-        // https://www.qrcode.com/en/howto/code.html
-        int margin = 4;
-        int scale = 3;
-        int qrsidelen = (int) sidelen;
-        int scaledSizeLen = qrsidelen * scale;
-        boolean flag = false;
-
-        BufferedImage qrcode = new BufferedImage(
-                scaledSizeLen + margin*2,
-                scaledSizeLen + margin*2,
-                BufferedImage.TYPE_INT_RGB);
-
-        int qrHeight = qrcode.getHeight();
-        int qrWidth = qrcode.getWidth();
-
-        for (int x = 0, idx = 0; x < qrWidth; x++) {
-            for (int y = 0; y < qrHeight; y++) {
-                if (x < margin || y < margin ||
-                    x >= (qrWidth - margin) || y >= (qrHeight - margin))
-                {
-                    qrcode.setRGB(x, y, Color.WHITE.getRGB());
-                    continue;
-                } else {
-                    if ((y-margin) % scale == 0) {
-                        flag = qrpixels.get(idx++);
-                    }
-                    qrcode.setRGB(x, y, flag ? Color.BLACK.getRGB() : Color.WHITE.getRGB());
-                }
-            }
-
-            if (x >= margin || x < (qrWidth - margin)) {
-                if ((x-margin) == 0 || (x-margin) % scale != 0) {
-                    idx = ((x-margin) / scale) * qrsidelen;
-                }
-            }
-        }
-
-        return qrcode;
+        return qrpixels;
     }
 
     /**
@@ -643,7 +576,6 @@ public class IDPassReader {
      * @param buf The binary blob to be encoded into a QR code.
      * @return Returns an XML SVG vector graphics format
      */
-
     protected String getQRCodeAsSVG(byte[] buf)
     {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
@@ -725,13 +657,12 @@ public class IDPassReader {
     }
 
     /**
-     *
+     * Generate child or intermediate certificate
      * @param parentSecretKey A ED25519 private key
      * @param childPublicKey An ED25519 public key
-     * @return
+     * @return Returns an intermediate certificate
      * @throws IDPassException Standard exception
      */
-
     public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childPublicKey)
             throws IDPassException
     {
@@ -767,14 +698,14 @@ public class IDPassReader {
         return add_certificates(ctx, certs.toByteArray());
     }
 
-    public boolean saveConfiguration(String alias, String keystorepath, String password)
+    public boolean saveConfiguration(String alias, File keystoreFile, String keystorePass, String keyPass)
     {
-        IDPassHelper.writeKeyStoreEntry(alias + "_keyset",
-                keystorepath, password, m_keyset.toByteArray());
+        IDPassHelper.writeKeyStoreEntry(alias + "_keyset",keystoreFile,
+                keystorePass, keyPass, m_keyset.toByteArray());
 
         if (m_rootcertificates != null) {
             IDPassHelper.writeKeyStoreEntry(alias + "_rootcertificates",
-                    keystorepath, password, m_rootcertificates.toByteArray());
+                    keystoreFile, keystorePass, keyPass, m_rootcertificates.toByteArray());
         }
 
         return true;

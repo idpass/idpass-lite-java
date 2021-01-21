@@ -7,9 +7,13 @@ This is a Java wrapper of the [libidpasslite](https://github.com/idpass/idpass-l
 ![id front](testdata/idpass-lite-java-sample-front.png?raw=true "front") ![id back](testdata/idpass-lite-java-sample-back.png?raw=true "back")
 
 
-## Building
+## Building for Java `idpass-lite-java-${VERSION}.jar`
 ```bash
 ./gradlew build
+```
+## Building for Android `idpass-lite-java-android-${VERSION}.aar`
+```bash
+cd android && ./gradlew build
 ```
 
 ## Features
@@ -34,7 +38,7 @@ repositories {
 }
 
 dependencies {
-    implementation "org.idpass:idpass-lite-java:0.0.1-SNAPSHOT"
+    implementation "org.idpass:idpass-lite-java:0.1"
     implementation 'com.google.protobuf:protobuf-java:3.12.2'
 }
 ```
@@ -95,10 +99,10 @@ Ident ident = Ident.newBuilder()
 Card card = reader.newCard(ident, certchain);
 
 // Render the ID PASS Lite ID as a secure QR code
-BufferedImage qrCode = card.asQRCode();
+BufferedImage qrCode = Helper.toBufferedImage(card);
 
 // Scan the generated ID PASS Lite QR code with the reader
-Card readCard = reader.open(qrCode);
+Card readCard = reader.open(Helper.scanQRCode(qrCode));
 
 // Biometrically authenticate into ID PASS Lite QR code ID using face recognition
 readCard.authenticateWithFace(photo);

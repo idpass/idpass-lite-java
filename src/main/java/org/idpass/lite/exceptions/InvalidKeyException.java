@@ -25,4 +25,9 @@ public class InvalidKeyException extends IDPassException {
         super();
         this.key = key;
     }
+
+    public InvalidKeyException(String msg) {
+        super();
+        this.key = null;
+    }
 }
