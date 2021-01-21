@@ -99,10 +99,10 @@ Ident ident = Ident.newBuilder()
 Card card = reader.newCard(ident, certchain);
 
 // Render the ID PASS Lite ID as a secure QR code
-BufferedImage qrCode = card.asQRCode();
+BufferedImage qrCode = Helper.toBufferedImage(card);
 
 // Scan the generated ID PASS Lite QR code with the reader
-Card readCard = reader.open(qrCode);
+Card readCard = reader.open(Helper.scanQRCode(qrCode));
 
 // Biometrically authenticate into ID PASS Lite QR code ID using face recognition
 readCard.authenticateWithFace(photo);
