@@ -102,7 +102,6 @@ public class IDPassHelper {
      * @return KeyStore object
      * @throws IDPassException Standard exception
      */
-
     public static KeyStore getKeyStore(InputStream stream, String password)
             throws IDPassException
     {
@@ -125,7 +124,6 @@ public class IDPassHelper {
      * @return Returns byte[] array of an IDPASS reader's needed security configuration
      * @throws IDPassException Throws custom exception
      */
-
     public static byte[][] readKeyStoreEntry(String alias, KeyStore store, String password)
             throws IDPassException
     {
@@ -161,7 +159,6 @@ public class IDPassHelper {
      * @return Returns byte[] array of an IDPASS reader's needed security configuration
      * @throws IDPassException Throws custom exception
      */
-
     public static byte[][] readKeyStoreEntry(String alias, String keystorepath, String password)
         throws IDPassException
     {
@@ -204,7 +201,6 @@ public class IDPassHelper {
      * @return Returns array of byte array on success or null if key alias does not exsists
      * @throws IDPassException Wrong password either in keystore file or in key entry
      */
-
     public static byte[][] readKeyStoreEntry(String alias, InputStream keystorepath,
         String keystorePass, String keyPass)
         throws IDPassException
@@ -244,7 +240,6 @@ public class IDPassHelper {
      * @param password The password that protects the keystore file during read/write
      * @return True if the key/value is successfully added into the keystore file
      */
-
     public static boolean writeKeyStoreEntry(String alias, String keystorepath,
         String password, byte[] ... entry)
     {
@@ -313,7 +308,6 @@ public class IDPassHelper {
      * @param entry A list of byte arrays
      * @return True when entry succesfully added. False otherwise
      */
-
     public static boolean writeKeyStoreEntry(String alias, File keystorefile,
         String keystorePass, String keyPass, byte[] ... entry)
     {

@@ -50,7 +50,6 @@ public class Card {
      *
      * @param scale Number of pixels per module
      */
-
     public void setScale(int scale) {
         if (scale > 0) {
             this.scale = scale;
@@ -63,7 +62,6 @@ public class Card {
      *
      * @param margin Count of modules for the margin
      */
-
     public void setMargin(int margin) {
         if (margin > 0) {
             this.margin = margin;
@@ -74,7 +72,6 @@ public class Card {
      * Get the scale value
      * @return scale
      */
-
     public int getScale() {
         return scale;
     }
@@ -83,7 +80,6 @@ public class Card {
      * Get the margin value
      * @return margin
      */
-
     public int getMargin() {
         return margin;
     }
@@ -95,7 +91,6 @@ public class Card {
      * @return Identity field details
      * @throws InvalidProtocolBufferException Protobuf error
      */
-
     public CardDetails getDetails() throws InvalidProtocolBufferException {
         CardDetails details = publicCardDetails;
         if (isAuthenticated) {
@@ -137,7 +132,6 @@ public class Card {
      * @return True Returns true if certificate chain
      * validates and verifies the IDPassCard's signature.
      */
-
     public boolean verifyCertificate()
     {
         try {
@@ -193,7 +187,6 @@ public class Card {
      * Check if card is authenticated
      * @return true if the PIN or Face has been verified
      */
-
     public boolean isAuthenticated() {
         return isAuthenticated;
     }
@@ -339,7 +332,6 @@ public class Card {
      * the id card.
      * @return String An XML SVG vector graphics format
      */
-
     public String asQRCodeSVG() {
         return this.reader.getQRCodeAsSVG(this.cardAsByte);
     }
@@ -358,7 +350,6 @@ public class Card {
      * Return identity extra information.
      * @return Key/value pair of additional information
      */
-
     public HashMap<String, String> getCardExtras()
     {
         return cardExtras;
@@ -470,7 +461,6 @@ public class Card {
      * @return Returns the encrypted data
      * @throws NotVerifiedException Custom exception
      */
-
     public byte[] encrypt(byte[] data)
             throws NotVerifiedException
     {
@@ -488,7 +478,6 @@ public class Card {
      * @throws NotVerifiedException Custom exception
      * @throws InvalidCardException Custom exception
      */
-
     public byte[] decrypt(byte[] data)
             throws NotVerifiedException, InvalidCardException
     {

@@ -135,7 +135,6 @@ public class IDPassReader {
      * @throws IDPassException Custom exception
      * @throws IOException Java exception
      */
-
     public IDPassReader(String alias, String configfile, String keystorePass)
             throws IDPassException, IOException {
 
@@ -169,7 +168,6 @@ public class IDPassReader {
      * @throws IDPassException Custom exception
      * @throws IOException Java exception
      */
-
     public IDPassReader(String alias, InputStream is, String keystorePass, String keyPass)
             throws IDPassException, IOException {
 
@@ -329,7 +327,6 @@ public class IDPassReader {
      * 64*2 bytes inside the QR code.
      * @return Example values are 0.42 if half mode, or 0.6 if full mode
      */
-
     public float getFaceDiffThreshold()
     {
         float facediff = 0.0f;
@@ -353,7 +350,6 @@ public class IDPassReader {
      * @param full If true, then facial template is 128 floats with 4 bytes per float.
      * Otherwise, it is 64 floats with 2 bytes per float.
      */
-
     public void setDlibDimension(boolean full)
     {
         byte[] cmd = new byte[2];
@@ -371,7 +367,6 @@ public class IDPassReader {
      * @return Returns true of facial biometry is represented in full 128 floats 4 bytes per float.
      * Otherwise, facial biometry is represented in half which is 64 floats 2 bytes per float.
      */
-
     public boolean getDlibDimension()
     {
         byte[] cmd = new byte[2];
@@ -390,7 +385,6 @@ public class IDPassReader {
      *
      * @param eccLevel Any of valid levels of QR code ECC
      */
-
     public void setQRCodeECC(int eccLevel)
     {
         byte[] cmd = new byte[2];
@@ -453,7 +447,6 @@ public class IDPassReader {
      * @return Returns a merged CardDetails
      * @throws InvalidProtocolBufferException Invalid CardDetails
      */
-
     public static CardDetails mergeCardDetails(CardDetails d1, CardDetails d2)
         throws InvalidProtocolBufferException
     {
@@ -563,7 +556,6 @@ public class IDPassReader {
      * @return Returns a QR code image
      * @throws InvalidCardException Invalid QR code byte arrays
      */
-
     protected BitSet getQRCode(byte[] buf)
         throws InvalidCardException
     {
@@ -584,7 +576,6 @@ public class IDPassReader {
      * @param buf The binary blob to be encoded into a QR code.
      * @return Returns an XML SVG vector graphics format
      */
-
     protected String getQRCodeAsSVG(byte[] buf)
     {
         BitSet qrpixels = generate_qrcode_pixels(ctx, buf);
@@ -672,7 +663,6 @@ public class IDPassReader {
      * @return Returns an intermediate certificate
      * @throws IDPassException Standard exception
      */
-
     public static Certificate generateChildCertificate(byte[] parentSecretKey, byte[] childPublicKey)
             throws IDPassException
     {

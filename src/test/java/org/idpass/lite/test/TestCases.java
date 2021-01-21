@@ -1729,7 +1729,6 @@ public class TestCases {
     /**
      * Merge two CardDetails into one
      */
-
 	//@Disabled
     @Test
     @DisplayName("Merge two card details into one")
@@ -1850,7 +1849,6 @@ public class TestCases {
      * @throws IOException If wrong keystore password
      * @throws IDPassException If wrong keystore password
      */
-
     @Test
     @DisplayName("Write and read back random entry values into a keystore file")
     public void writeReadKeyStoreEntryTest()

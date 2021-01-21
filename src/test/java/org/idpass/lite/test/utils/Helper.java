@@ -48,7 +48,6 @@ public class Helper {
      * @return
      * @throws InvalidCardException
      */
-
     public static boolean saveImage(Card card, String format, OutputStream outfile)
             throws InvalidCardException
     {
@@ -80,7 +79,6 @@ public class Helper {
      * @return Returns a QR code image of the card
      * @throws InvalidCardException Corrupted card
      */
-
     public static BufferedImage toBufferedImage(Card card)
             throws InvalidCardException
     {
@@ -119,7 +117,6 @@ public class Helper {
      * @param n Length of password to generate
      * @return Returns alphananumeric string
      */
-
     public static String randomString(int n) {
         int leftLimit = 48; // numeral '0'
         int rightLimit = 122; // letter 'z'
