@@ -38,7 +38,7 @@ android {
 
         java {
             srcDir '../../src/main/java'
-            srcDir 'app/src/main/java'
+            srcDir 'aar/src/main/java'
         }
     }
 
