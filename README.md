@@ -56,7 +56,7 @@ We then create an instance of the `IDPassReader` class. This is going to need so
 // Generate cryptographic keys and initialize a keyset using these keys
 byte[] encryptionkey = IDPassHelper.generateEncryptionKey();
 byte[] signaturekey = IDPassHelper.generateSecretSignatureKey();
-byte[] publicVerificationKey = Arrays.copyOfRange(signaturekey, 32, 64);
+byte[] publicVerificationKey = IDPassHelper.getPublicKey(signaturekey);
 
 KeySet keyset = KeySet.newBuilder()
     .setEncryptionKey(ByteString.copyFrom(encryptionkey))
