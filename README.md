@@ -33,7 +33,7 @@ If you want to build this library from source, instructions to do so can be foun
 
 ## Usage
 
-To begin, we import the different classes from the library that we want to use:
+To begin, we import the different classes from the library that we want to use. We can see this snippet and the rest of the example code in our [test suite](src/test/java/org/idpass/lite/test/NarrativeTestCases.java#L535-L553):
 
 ```java
 import org.api.proto.Certificates;
