@@ -24,6 +24,7 @@ import org.api.proto.Certificates;
 import org.api.proto.Ident;
 import org.api.proto.KeySet;
 import org.api.proto.byteArray;
+import org.idpass.lite.IDPassLite;
 import org.idpass.lite.Card;
 import org.idpass.lite.IDPassHelper;
 import org.idpass.lite.IDPassReader;
@@ -52,6 +53,10 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestCases {
+
+	static {
+        IDPassLite.initialize();
+	}
 
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();

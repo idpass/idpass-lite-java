@@ -100,12 +100,6 @@ public class IDPassReader {
     protected KeySet m_keyset;
     protected Certificates m_rootcertificates;
 
-    static {
-        if (!IDPassLoader.loadLibrary()) {
-            throw new RuntimeException("Failed to load libidpasslite.so");
-        }
-    }
-
     /**
      * Instantiates an instance of the library with additional verification keys
      * @param ks The cryptographic key settings

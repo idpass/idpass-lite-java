@@ -1,8 +1,7 @@
 package org.idpass.lite.android;
 
 import android.content.res.AssetManager;
-import android.system.ErrnoException;
-import android.system.Os;
+import org.idpass.lite.IDPassReader;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,6 +10,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
+ * Initializer for Android mobile applications.
+ *
  * This class is used to copy Dlib's model dat files from asset
  * to cache dir and set environment variables needed by
  * libidpasslite.so.
@@ -19,8 +20,16 @@ public class IDPassLite {
 
     private static final String shapeData = "shape_predictor_5_face_landmarks.dat";
     private static final String faceData = "dlib_face_recognition_resnet_model_v1.dat";
+    private static final String SHAPEPREDICTIONDATA = "SHAPEPREDICTIONDATA";
+    private static final String FACERECOGNITIONDATA = "FACERECOGNITIONDATA";
+    private static boolean isInitialized = false;
 
-    public static boolean loadModels(File cachedir, AssetManager am) {
+    public static boolean initialize(File cachedir, AssetManager am)
+    {
+        if (!isInitialized) {
+            System.loadLibrary("idpasslite");
+            isInitialized = true;
+        }
 
         File shapeDataFile = new File(cachedir.getAbsolutePath() + "/" + shapeData);
         File faceDataFile = new File(cachedir.getAbsolutePath() + "/" + faceData);
@@ -44,10 +53,10 @@ public class IDPassLite {
                 fos.write(buf);
             }
 
-            Os.setenv("SHAPEPREDICTIONDATA", cachedir.getAbsolutePath() + "/" + shapeData, true);
-            Os.setenv("FACERECOGNITIONDATA", cachedir.getAbsolutePath() + "/" + faceData, true);
+            IDPassReader.setenv(SHAPEPREDICTIONDATA, cachedir.getAbsolutePath() + "/" + shapeData, true);
+            IDPassReader.setenv(FACERECOGNITIONDATA, cachedir.getAbsolutePath() + "/" + faceData, true);
 
-        } catch (IOException | ErrnoException e) {
+        } catch (IOException e) {
             return false;
         }
 

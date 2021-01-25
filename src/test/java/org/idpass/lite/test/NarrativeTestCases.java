@@ -25,6 +25,7 @@ import org.api.proto.Ident;
 import org.api.proto.KeySet;
 import org.idpass.lite.Card;
 import org.idpass.lite.IDPassHelper;
+import org.idpass.lite.IDPassLite;
 import org.idpass.lite.IDPassReader;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
@@ -77,6 +78,10 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 
 public class NarrativeTestCases {
+
+	static {
+        IDPassLite.initialize();
+	}
 
     // Protobuf data structure that is filled with identity details.
     // An ID PASS lite card is generated from this data structure.
