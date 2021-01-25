@@ -504,17 +504,17 @@ public class NarrativeTestCases {
         String keystorePass = Helper.randomString(10);
         String keyPass = Helper.randomString(10);
         String keyAliasPrefix = "test";
-        reader1.saveConfiguration(keyAliasPrefix, p12File, keystorePass, keyPass);
+        Helper.saveConfiguration(keyAliasPrefix, p12File, keystorePass, keyPass, ks, rootcertsA);
 
         // We can also save other blobs of data to the keystore file
-        IDPassHelper.writeKeyStoreEntry("rootcertificatesprivatekeys",
+        Helper.writeKeyStoreEntry("rootcertificatesprivatekeys",
                 p12File, keystorePass, keyPass, rootkey);
 
-        IDPassHelper.writeKeyStoreEntry("intermedcertificatesprivatekeys",
+        Helper.writeKeyStoreEntry("intermedcertificatesprivatekeys",
                 p12File, keystorePass, keyPass, IDPassHelper.getPublicKey(ks.getSignatureKey().toByteArray()));
 
         InputStream is = new FileInputStream(p12File);
-        IDPassReader reader2 = new IDPassReader(keyAliasPrefix,is,keystorePass, keyPass);
+        IDPassReader reader2 = new IDPassReader(ks, rootcertsA);
 
         BufferedImage qrPic = ImageIO.read(qrFile);
         Card card2 = reader2.open(Helper.scanQRCode(qrPic));
@@ -525,5 +525,15 @@ public class NarrativeTestCases {
 
         p12File.delete();
         qrFile.delete();
+    }
+
+    @Test
+    @DisplayName("Test set and get an environment variable")
+    public void environVarTest() {
+        String name = "TESTVARNAME";
+        String value = Helper.randomString(64);
+        IDPassReader.setenv(name, value, true);
+        String val = IDPassReader.getenv(name);
+        assertEquals(value, val);
     }
 }

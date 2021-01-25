@@ -30,7 +30,6 @@ import org.idpass.lite.proto.IDPassCards;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.security.KeyStore;
 import java.util.Arrays;
 import java.util.BitSet;
 
@@ -121,73 +120,6 @@ public class IDPassReader {
 
         // add `rootCertificates` to the parameter
         ctx = idpass_init(ks.toByteArray(), rc != null ? rc.toByteArray() : null);
-        if (ctx == 0) {
-            throw new IDPassException("ID PASS Lite could not be initialized");
-        }
-    }
-
-    /**
-     * Initializes a reader using preset configuration of keyset
-     * and root certificates from a configuration file
-     * @param alias The key name to get the value configuration from the configuration file
-     * @param configfile This is a PKCS12 file to store reader configuration under a key name
-     * @param keystorePass Password to read PKCS 12 file
-     * @throws IDPassException Custom exception
-     * @throws IOException Java exception
-     */
-    public IDPassReader(String alias, String configfile, String keystorePass)
-            throws IDPassException, IOException {
-
-        byte[][] buf = IDPassHelper.readKeyStoreEntry(alias + "_keyset", configfile, keystorePass);
-        if (buf == null) {
-            throw new IDPassException("ID PASS Lite could not be initialized from config");
-        }
-        m_keyset = KeySet.parseFrom(buf[0]);
-
-        buf = IDPassHelper.readKeyStoreEntry(alias + "_rootcertificates", configfile, keystorePass);
-        if (buf != null) {
-            byte[] certificatesBuf = buf[0];
-            m_rootcertificates = Certificates.parseFrom(certificatesBuf);
-        } else {
-            m_rootcertificates = null;
-        }
-
-        ctx = idpass_init(m_keyset.toByteArray(), m_rootcertificates != null ? m_rootcertificates.toByteArray() : null);
-        if (ctx == 0) {
-            throw new IDPassException("ID PASS Lite could not be initialized");
-        }
-    }
-
-    /**
-     * Initializes a reader using preset configuration of keyset
-     * and root certificates from a configuration file
-     * @param alias The key name to get the value configuration from the configuration file
-     * @param is This is a PKCS12 file input stream
-     * @param keystorePass Password to open PKCS 12 file
-     * @param keyPass Password to get a key
-     * @throws IDPassException Custom exception
-     * @throws IOException Java exception
-     */
-    public IDPassReader(String alias, InputStream is, String keystorePass, String keyPass)
-            throws IDPassException, IOException {
-
-        KeyStore store = IDPassHelper.getKeyStore(is, keystorePass);
-
-        byte[][] buf = IDPassHelper.readKeyStoreEntry(alias + "_keyset", store, keyPass);
-        if (buf == null) {
-            throw new IDPassException("ID PASS Lite could not be initialized from config");
-        }
-        m_keyset = KeySet.parseFrom(buf[0]);
-
-        buf = IDPassHelper.readKeyStoreEntry(alias + "_rootcertificates", store, keyPass);
-        if (buf != null) {
-            byte[] certificatesBuf = buf[0];
-            m_rootcertificates = Certificates.parseFrom(certificatesBuf);
-        } else {
-            m_rootcertificates = null;
-        }
-
-        ctx = idpass_init(m_keyset.toByteArray(), m_rootcertificates != null ? m_rootcertificates.toByteArray() : null);
         if (ctx == 0) {
             throw new IDPassException("ID PASS Lite could not be initialized");
         }
@@ -438,7 +370,17 @@ public class IDPassReader {
     private native int verify_card_certificate(long ctx, byte[] blob);
     private native boolean verify_card_signature(long ctx, byte[] blob);
     private static native byte[] merge_CardDetails(byte[] d1, byte[] d2);
+    private static native void setenviron(String name, String value, boolean overwrite);
+    private static native String getenviron(String name);
     //=========================================================
+
+    public static String getenv(String name) {
+        return getenviron(name);
+    }
+
+    public static void setenv(String name, String value, boolean overwrite) {
+        setenviron(name, value, overwrite);
+    }
 
     /**
      * Merge two CardDetails into one.
@@ -696,18 +638,5 @@ public class IDPassReader {
     public boolean addIntermediateCertificates(Certificates certs)
     {
         return add_certificates(ctx, certs.toByteArray());
-    }
-
-    public boolean saveConfiguration(String alias, File keystoreFile, String keystorePass, String keyPass)
-    {
-        IDPassHelper.writeKeyStoreEntry(alias + "_keyset",keystoreFile,
-                keystorePass, keyPass, m_keyset.toByteArray());
-
-        if (m_rootcertificates != null) {
-            IDPassHelper.writeKeyStoreEntry(alias + "_rootcertificates",
-                    keystoreFile, keystorePass, keyPass, m_rootcertificates.toByteArray());
-        }
-
-        return true;
     }
 }
