@@ -541,4 +541,35 @@ public class NarrativeTestCases {
         String val = IDPassReader.getenv(name);
         assertEquals(value, val);
     }
+
+    @Test
+    @DisplayName("Test invalid image format")
+    public void imageFormatTest() throws IOException, IDPassException {
+        // The buf1024.dat file is a random bytes of garbage data
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/buf1024.dat"));
+
+        KeySet ks = KeySet.newBuilder()
+                .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
+                .build();
+
+        IDPassReader reader = new IDPassReader(ks, null);
+
+        // Fill-in the ident structure with a photo of unknown format
+        Ident ident = Ident.newBuilder()
+                            .setPin("1234")
+                            .setPhoto(ByteString.copyFrom(photo))
+                            .setGivenName("John")
+                            .setSurName("Doe")
+                            .build();
+
+        // Because the photo is of unknown format, we cannot create a card
+        assertThrows(IDPassException.class, () -> reader.newCard(ident, null));
+
+        // Create a card from a valid pre-populated m_ident structure
+        Card card = reader.newCard(m_ident, null);
+
+        // Because photo is an unknown format, we cannot authenticate using it
+        assertThrows(CardVerificationException.class, () -> card.authenticateWithFace(photo));
+    }
 }
