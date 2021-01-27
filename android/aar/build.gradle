@@ -2,6 +2,8 @@ plugins {
     id "com.google.protobuf" version "0.8.14"
     id 'com.android.library'
     id 'kotlin-android'
+    id 'maven'
+    id 'signing'
 }
 
 ext {
@@ -9,6 +11,25 @@ ext {
     groupId = "org.idpass"
     version = '0.1'
     description = "ID PASS Lite (Java) Android is a wrapper API of libidpasslite.so"
+}
+
+group project.ext.groupId
+version = project.ext.version
+
+if (System.getenv('SONATYPE_USERNAME') != null) {
+    project.ext['ossrhUsername'] = System.getenv('SONATYPE_USERNAME')
+    project.ext['ossrhPassword'] = System.getenv('SONATYPE_PASSWORD')
+    project.ext['signing.secretKeyRingFile'] = System.getenv('GPG_KEYRING_FILE')
+    project.ext['signing.keyId'] = System.getenv('GPG_KEY_ID')
+    project.ext['signing.password'] =  System.getenv('GPG_KEY_PASSPHRASE')
+}
+
+signing {
+    if (project.hasProperty('signing.keyId') &&
+        project.hasProperty('signing.password') &&
+        project.hasProperty('signing.secretKeyRingFile')) {
+        sign configurations.archives
+    }
 }
 
 android {
@@ -95,4 +116,59 @@ protobuf {
             }
         }
     }
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+      if (project.hasProperty('ossrhUsername') && project.hasProperty('ossrhPassword')) {
+        repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+          authentication(userName: project.getProperty('ossrhUsername'),
+                         password: project.getProperty('ossrhPassword'))
+        }
+
+        snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+          authentication(userName: project.getProperty('ossrhUsername'),
+                         password: project.getProperty('ossrhPassword'))
+        }
+      }
+
+      pom.project {
+        name 'ID Pass Lite Android'
+        packaging 'aar'
+        // optionally artifactId can be defined here
+        artifactId project.ext.artifactId
+        description 'ID PASS Lite (Android) is a wrapper API of libidpasslite.so'
+        url 'https://github.com/idpass/idpass-lite-java'
+
+        scm {
+          connection 'scm:git:git://github.com/idpass/idpass-lite-java.git'
+          developerConnection 'scm:git:ssh://github.com:idpass/idpass-lite-java.git'
+          url 'https://github.com/idpass/idpass-lite-java/tree/master'
+        }
+
+        licenses {
+          license {
+            name 'The Apache License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          }
+        }
+
+        developers {
+          developer {
+            id 'jeremi'
+            name 'Jeremi Joslin'
+            email 'jeremi@newlogic.com'
+          }
+          developer {
+            id 'typelogic'
+            name 'Dexter Aparicio'
+            email 'dexter@newlogic.com'
+          }
+        }
+      }
+    }
+  }
 }
