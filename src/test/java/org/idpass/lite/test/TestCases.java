@@ -24,6 +24,7 @@ import org.api.proto.Certificates;
 import org.api.proto.Ident;
 import org.api.proto.KeySet;
 import org.api.proto.byteArray;
+import org.idpass.lite.IDPassLite;
 import org.idpass.lite.Card;
 import org.idpass.lite.IDPassHelper;
 import org.idpass.lite.IDPassReader;
@@ -52,6 +53,10 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestCases {
+
+	static {
+        IDPassLite.initialize();
+	}
 
     byte[] encryptionkey    = IDPassHelper.generateEncryptionKey();
     byte[] signaturekey     = IDPassHelper.generateSecretSignatureKey();
@@ -1109,13 +1114,13 @@ public class TestCases {
         ImageIO.write(Helper.toBufferedImage(card), "jpg", outputfile);
 
         // Persist the reader's configuration to a keystore file
-        reader.saveConfiguration("test", new File("reader1.cfg"), "changeit", "changeit");
+        Helper.saveConfiguration("test", new File("reader1.cfg"), "changeit", "changeit", m_keyset, m_rootcerts);
 
         // We can also save other blobs of data to the keystore file
-        IDPassHelper.writeKeyStoreEntry(
+        Helper.writeKeyStoreEntry(
             "rootcertificatesprivatekeys",new File("reader1.cfg.p12"), "changeit", "changeit", m_rootkey);
 
-        IDPassHelper.writeKeyStoreEntry(
+        Helper.writeKeyStoreEntry(
             "intermedcertificatesprivatekeys",new File("reader1.cfg.p12"), "changeit", "changeit", signaturekey);
     }
 
@@ -1205,8 +1210,13 @@ public class TestCases {
     public void test_read_id_with_certificate_reader_config()
             throws IOException {
         try {
+            byte[][] buf = Helper.readKeyStoreEntry("default_keyset", "testdata/reader.cfg.p12", "changeit", "changeit");
+            KeySet keyset = KeySet.parseFrom(buf[0]);
+            buf = Helper.readKeyStoreEntry("default_rootcertificates", "testdata/reader.cfg.p12", "changeit", "changeit");
+            Certificates rootcertificates = Certificates.parseFrom(buf[0]);
+
             // Initialize reader using keys from a keystore file
-            IDPassReader reader = new IDPassReader("default", "testdata/reader.cfg.p12", "changeit");
+            IDPassReader reader = new IDPassReader(keyset, rootcertificates);
             // Configure a QR code scanner that the reader will use to scan
 
             // Read a test QR code file
@@ -1236,11 +1246,13 @@ public class TestCases {
     public void test_read_p12_inputstream()
             throws IOException {
         try {
-            File p12File = new File("testdata/reader.cfg.p12");
-            InputStream is = new FileInputStream(p12File);
+            byte[][] buf = Helper.readKeyStoreEntry("default_keyset", "testdata/reader.cfg.p12", "changeit", "changeit");
+            KeySet keyset = KeySet.parseFrom(buf[0]);
+            buf = Helper.readKeyStoreEntry("default_rootcertificates", "testdata/reader.cfg.p12", "changeit", "changeit");
+            Certificates rootcertificates = Certificates.parseFrom(buf[0]);
 
             // Initialize reader from a keystore file using InputStream
-            IDPassReader reader = new IDPassReader("default", is, "changeit", "changeit");
+            IDPassReader reader = new IDPassReader(keyset, rootcertificates);
             // Configure a QR code scanner that the reader will use during scanning
 
             // Read a test QR code file
@@ -1270,11 +1282,16 @@ public class TestCases {
     public void test_dlib_function() throws IOException
     {
         try {
+            byte[][] buf = Helper.readKeyStoreEntry("default_keyset", "testdata/demokeys.cfg.p12", "changeit", "changeit");
+            KeySet keyset = KeySet.parseFrom(buf[0]);
+            buf = Helper.readKeyStoreEntry("default_rootcertificates", "testdata/demokeys.cfg.p12", "changeit", "changeit");
+            Certificates rootcertificates = Certificates.parseFrom(buf[0]);
+
             // Read a facial photo of Manny to array
             byte[] photo = Files.readAllBytes(Paths.get("testdata/manny1.bmp"));
 
             // Initialize reader using keys and certificate from a keystore file
-            IDPassReader reader = new IDPassReader("default", "testdata/reader.cfg.p12", "changeit");
+            IDPassReader reader = new IDPassReader(keyset, rootcertificates);
 
             // Compute the full dimension of 128 floats (4 bytes per float) of the facial photo
             byte[] dimensions = reader.getFaceTemplate(photo, true);
@@ -1315,8 +1332,13 @@ public class TestCases {
         String ssNumber = "SS Number";
         String ssNumberValue = "2 85 01 75 116 001 42";
 
+        byte[][] buf = Helper.readKeyStoreEntry("default_keyset", "testdata/demokeys.cfg.p12", "changeit", "changeit");
+        KeySet keyset = KeySet.parseFrom(buf[0]);
+        buf = Helper.readKeyStoreEntry("default_rootcertificates", "testdata/demokeys.cfg.p12", "changeit", "changeit");
+        Certificates rootcertificates = Certificates.parseFrom(buf[0]);
+
         // First, we initialize the reader with our test keys from the keystore file
-        IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
+        IDPassReader reader = new IDPassReader(keyset, rootcertificates);
         // Configure a QR code scanner that the reader will use to scan
 
         // Next, we prepare the QR code for reading. This is just a standard Java image load
@@ -1365,8 +1387,13 @@ public class TestCases {
         assertTrue(card3Info.containsKey(ssNumber) &&
                 card3Info.get(ssNumber).equals(ssNumberValue));
 
+        byte[][] buf2 = Helper.readKeyStoreEntry("default_keyset", "testdata/reader.cfg.p12", "changeit", "changeit");
+        KeySet keyset2 = KeySet.parseFrom(buf2[0]);
+        buf2 = Helper.readKeyStoreEntry("default_rootcertificates", "testdata/reader.cfg.p12", "changeit", "changeit");
+        Certificates rootcertificates2 = Certificates.parseFrom(buf2[0]);
+
         // Let us read the same QR code ID using a reader that is initialized with entirely different keys
-        IDPassReader reader2 = new IDPassReader("default", "testdata/reader.cfg.p12","changeit");
+        IDPassReader reader2 = new IDPassReader(keyset2, rootcertificates2);
 
         // Because reader2 has different keys configuration,
         // then it is not able to render (or open) the QR code ID into a card
@@ -1407,8 +1434,8 @@ public class TestCases {
 
         // First, let us copy the root key from our previous reader object to reconstruct 
         // the proper root certificate(s)
-        byte[][] entry = IDPassHelper.readKeyStoreEntry(
-                "rootcertificatesprivatekeys","testdata/demokeys.cfg.p12", "changeit");
+        byte[][] entry = Helper.readKeyStoreEntry(
+                "rootcertificatesprivatekeys","testdata/demokeys.cfg.p12", "changeit", "changeit");
 
         Certificate rootcert = IDPassReader.generateRootCertificate(entry[0]);
         Certificates rootcerts = Certificates.newBuilder().addCert(rootcert).build();
@@ -1566,8 +1593,13 @@ public class TestCases {
                 .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
                 .build();
 
+        byte[][] buf = Helper.readKeyStoreEntry("default_keyset", "testdata/demokeys.cfg.p12", "changeit", "changeit");
+        KeySet keyset = KeySet.parseFrom(buf[0]);
+        buf = Helper.readKeyStoreEntry("default_rootcertificates", "testdata/demokeys.cfg.p12", "changeit", "changeit");
+        Certificates rootcertificates = Certificates.parseFrom(buf[0]);
+
         // Initialize library with default keyset and certificate from a keystore file
-        IDPassReader reader = new IDPassReader("default", "testdata/demokeys.cfg.p12","changeit");
+        IDPassReader reader = new IDPassReader(keyset, rootcertificates);
 
         // Configure library to make some detail fields publicly visible in the rendered card
         reader.setDetailsVisible(
@@ -1576,12 +1608,12 @@ public class TestCases {
                 IDPassReader.DETAIL_DATEOFBIRTH);
 
         // Read back the root key from its corresponding keystore key name
-        byte[][] entry = IDPassHelper.readKeyStoreEntry(
-                "rootcertificatesprivatekeys", "testdata/demokeys.cfg.p12", "changeit");
+        byte[][] entry = Helper.readKeyStoreEntry(
+                "rootcertificatesprivatekeys", "testdata/demokeys.cfg.p12", "changeit", "changeit");
         byte[] root_key = entry[0];
 
-        entry = IDPassHelper.readKeyStoreEntry(
-                "intermedcertificatesprivatekeys", "testdata/demokeys.cfg.p12", "changeit");
+        entry = Helper.readKeyStoreEntry(
+                "intermedcertificatesprivatekeys", "testdata/demokeys.cfg.p12", "changeit", "changeit");
         byte[] intermed_key = entry[0];
 
         // Create a certchain that will be attached in the rendered card
@@ -1871,18 +1903,18 @@ public class TestCases {
         File keystorefile = File.createTempFile("tmp", null);
         // Store the blobs buf1 and buf2 under keyentry1
         // Store the blob buf3 under keyentry2
-        IDPassHelper.writeKeyStoreEntry("keyentry1", keystorefile, keystorePass, keyPass, buf1, buf2);
-        IDPassHelper.writeKeyStoreEntry("keyentry2", keystorefile, keystorePass, keyPass, buf3);
+        Helper.writeKeyStoreEntry("keyentry1", keystorefile, keystorePass, keyPass, buf1, buf2);
+        Helper.writeKeyStoreEntry("keyentry2", keystorefile, keystorePass, keyPass, buf3);
 
         // Read back keyentry1
-        byte[][] entry = IDPassHelper.readKeyStoreEntry("keyentry1", new FileInputStream(keystorefile), keystorePass, keyPass);
+        byte[][] entry = Helper.readKeyStoreEntry("keyentry1", new FileInputStream(keystorefile), keystorePass, keyPass);
         // Verify that the entry has two blobs and that they match values
         assertEquals(entry.length, 2);
         assertArrayEquals(buf1, entry[0]);
         assertArrayEquals(buf2, entry[1]);
 
         // Read back keyentry2
-        entry = IDPassHelper.readKeyStoreEntry("keyentry2", new FileInputStream(keystorefile), keystorePass, keyPass);
+        entry = Helper.readKeyStoreEntry("keyentry2", new FileInputStream(keystorefile), keystorePass, keyPass);
         // Verify that the entry has one blob and that it match value
         assertEquals(entry.length, 1);
         assertArrayEquals(buf3, entry[0]);

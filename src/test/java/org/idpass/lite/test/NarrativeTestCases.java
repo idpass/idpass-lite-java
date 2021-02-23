@@ -26,6 +26,7 @@ import org.api.proto.KeySet;
 import org.api.proto.byteArray;
 import org.idpass.lite.Card;
 import org.idpass.lite.IDPassHelper;
+import org.idpass.lite.IDPassLite;
 import org.idpass.lite.IDPassReader;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
@@ -79,6 +80,10 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 
 public class NarrativeTestCases {
+
+	static {
+        IDPassLite.initialize();
+	}
 
     // Protobuf data structure that is filled with identity details.
     // An ID PASS lite card is generated from this data structure.
@@ -506,17 +511,17 @@ public class NarrativeTestCases {
         String keystorePass = Helper.randomString(10);
         String keyPass = Helper.randomString(10);
         String keyAliasPrefix = "test";
-        reader1.saveConfiguration(keyAliasPrefix, p12File, keystorePass, keyPass);
+        Helper.saveConfiguration(keyAliasPrefix, p12File, keystorePass, keyPass, ks, rootcertsA);
 
         // We can also save other blobs of data to the keystore file
-        IDPassHelper.writeKeyStoreEntry("rootcertificatesprivatekeys",
+        Helper.writeKeyStoreEntry("rootcertificatesprivatekeys",
                 p12File, keystorePass, keyPass, rootkey);
 
-        IDPassHelper.writeKeyStoreEntry("intermedcertificatesprivatekeys",
+        Helper.writeKeyStoreEntry("intermedcertificatesprivatekeys",
                 p12File, keystorePass, keyPass, IDPassHelper.getPublicKey(ks.getSignatureKey().toByteArray()));
 
         InputStream is = new FileInputStream(p12File);
-        IDPassReader reader2 = new IDPassReader(keyAliasPrefix,is,keystorePass, keyPass);
+        IDPassReader reader2 = new IDPassReader(ks, rootcertsA);
 
         BufferedImage qrPic = ImageIO.read(qrFile);
         Card card2 = reader2.open(Helper.scanQRCode(qrPic));
@@ -588,5 +593,45 @@ public class NarrativeTestCases {
         // Private identity details shall be available when authenticated
         String givenName = readCard.getGivenName();
         assertEquals(givenName, "MARION FLORENCE");
+    }
+
+    @DisplayName("Test set and get an environment variable")
+    public void environVarTest() {
+        String name = "TESTVARNAME";
+        String value = Helper.randomString(64);
+        IDPassReader.setenv(name, value, true);
+        String val = IDPassReader.getenv(name);
+        assertEquals(value, val);
+    }
+
+    @Test
+    @DisplayName("Test invalid image format")
+    public void imageFormatTest() throws IOException, IDPassException {
+        // The buf1024.dat file is a random bytes of garbage data
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/buf1024.dat"));
+
+        KeySet ks = KeySet.newBuilder()
+                .setEncryptionKey(IDPassHelper.generateEncryptionKeyAsByteString())
+                .setSignatureKey(IDPassHelper.generateSecretSignatureKeyAsByteString())
+                .build();
+
+        IDPassReader reader = new IDPassReader(ks, null);
+
+        // Fill-in the ident structure with a photo of unknown format
+        Ident ident = Ident.newBuilder()
+                            .setPin("1234")
+                            .setPhoto(ByteString.copyFrom(photo))
+                            .setGivenName("John")
+                            .setSurName("Doe")
+                            .build();
+
+        // Because the photo is of unknown format, we cannot create a card
+        assertThrows(IDPassException.class, () -> reader.newCard(ident, null));
+
+        // Create a card from a valid pre-populated m_ident structure
+        Card card = reader.newCard(m_ident, null);
+
+        // Because photo is an unknown format, we cannot authenticate using it
+        assertThrows(CardVerificationException.class, () -> card.authenticateWithFace(photo));
     }
 }
