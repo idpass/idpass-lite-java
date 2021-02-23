@@ -2,35 +2,21 @@
 
 [![CircleCI](https://circleci.com/gh/idpass/idpass-lite-java.svg?style=svg&circle-token=4fb5cc4cfe96b754d1842c2443ee638608bc4755)](https://circleci.com/gh/idpass/idpass-lite-java)
 
-This is a Java wrapper of the [libidpasslite](https://github.com/idpass/idpass-lite) library that provides developers with an API to create and interact with ID PASS Lite cards.
+A Java wrapper for the [idpass-lite](https://github.com/idpass/idpass-lite) library, providing an API to create and interact with secure and biometrically-binding QR code identity cards.
 
 ![id front](testdata/idpass-lite-java-sample-front.png?raw=true "front") ![id back](testdata/idpass-lite-java-sample-back.png?raw=true "back")
 
-
-## Building for Java `idpass-lite-java-${VERSION}.jar`
-```bash
-./gradlew build
-```
-## Building for Android `idpass-lite-java-android-${VERSION}.aar`
-```bash
-cd android && ./gradlew build
-```
-
 ## Features
-- Create card with face
-- Verify card with face
-- Verify card with pin
-- Sign with card
-- Encrypt with card
-- Add/revoke/verify certificates
-- Generate QR Code
-- Read QR Code
 
-## Quick start
-This library is used to generate a secure and biometrically-binding QR coded identification cards. 
+- Create and verify card with face
+- Verify card with PIN
+- Sign and encrypt with card
+- Add, revoke, and verify certificates
+- Generate and read QR codes
 
-### 1. Install
-Declare Maven Central repository in the dependency configuration. For example, in `build.gradle`:
+## Installation
+
+Declare Maven Central repository in the dependency configuration, then add this library in the dependencies. An example using `build.gradle`:
 
 ```groovy
 repositories {
@@ -43,24 +29,35 @@ dependencies {
 }
 ```
 
-### 2. Usage
+If you want to build this library from source, instructions to do so can be found in the [Building from source](https://github.com/idpass/idpass-lite-java/wiki/Building-from-source) wiki page.
 
-Initializing the `IDPassReader` object:
+## Usage
+
+To begin, we import the different classes from the library that we want to use. We can see this snippet and the rest of the example code in our [test suite](src/test/java/org/idpass/lite/test/NarrativeTestCases.java#L535-L553):
 
 ```java
-// Generate cryptographic keys
+import org.api.proto.Certificates;
+import org.api.proto.Ident;
+import org.api.proto.KeySet;
+import org.api.proto.byteArray;
+import org.idpass.lite.Card;
+import org.idpass.lite.IDPassHelper;
+import org.idpass.lite.IDPassReader;
+import org.idpass.lite.proto.Date;
+import org.idpass.lite.proto.*;
+import org.idpass.lite.test.utils.Helper;
+```
+
+Refer to the [API Reference](https://github.com/idpass/idpass-lite-java/wiki/API-Reference) for documentation about the available classes.
+
+We then create an instance of the `IDPassReader` class. This is going to need some keys and certificates so we define those as well.
+
+```java
+// Generate cryptographic keys and initialize a keyset using these keys
 byte[] encryptionkey = IDPassHelper.generateEncryptionKey();
 byte[] signaturekey = IDPassHelper.generateSecretSignatureKey();
-byte[] publicVerificationKey = Arrays.copyOfRange(signaturekey, 32, 64);
+byte[] publicVerificationKey = IDPassHelper.getPublicKey(signaturekey);
 
-// Generate certificate. This is optional.
-byte[] rootkey = IDPassHelper.generateSecretSignatureKey();
-Certificate rootcert = IDPassReader.generateRootCertificate(rootkey);
-Certificates rootcerts = Certificates.newBuilder().addCert(rootcert).build();
-Certificate childcert = IDPassReader.generateChildCertificate(rootkey, publicVerificationKey);
-Certificates certchain = Certificates.newBuilder().addCert(childcert).build();
-
-// Initialize a keyset object with the keys
 KeySet keyset = KeySet.newBuilder()
     .setEncryptionKey(ByteString.copyFrom(encryptionkey))
     .setSignatureKey(ByteString.copyFrom(signaturekey))
@@ -69,12 +66,26 @@ KeySet keyset = KeySet.newBuilder()
         .setVal(ByteString.copyFrom(publicVerificationKey)).build())
     .build();
 
+// Generate certificates (this is optional)
+byte[] rootkey = IDPassHelper.generateSecretSignatureKey();
+Certificate rootcert = IDPassReader.generateRootCertificate(rootkey);
+Certificates rootcerts = Certificates.newBuilder().addCert(rootcert).build();
+Certificate childcert = IDPassReader.generateChildCertificate(rootkey, publicVerificationKey);
+Certificates certchain = Certificates.newBuilder().addCert(childcert).build();
+
 // Initialize IDPassReader object with the keyset and an optional certificate
 IDPassReader reader = new IDPassReader(keyset, rootcerts);
 ```
 
-Generate a secure and biometrically-binding **ID PASS Lite** QR code ID using the initialized `IDPassReader` object:
+Alternatively, we can create an `IDPassReader` instance using a **PKCS12** keystore file:
 
+```java
+File p12File = new File("/path/to/demokeys.cfg.p12");
+InputStream inputStream = new FileInputStream(p12File);
+IDPassReader reader = new IDPassReader("default", inputStream, "changeit", "changeit");
+```
+
+Once we have an `IDPassReader` instance, we can then use it to generate a secure and biometrically-binding **ID PASS Lite** QR code identity card:
 
 ```java
 // Scan photo of card ID owner
@@ -95,27 +106,30 @@ Ident ident = Ident.newBuilder()
     .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
     .build();
 
-// Generate a secure ID PASS Lite ID 
+// Generate a secure ID PASS Lite ID
 Card card = reader.newCard(ident, certchain);
+```
 
-// Render the ID PASS Lite ID as a secure QR code
+The following are some examples of what can be done with the generated ID PASS Lite card. Refer to the [API Reference](https://github.com/idpass/idpass-lite-java/wiki/API-Reference) for more documentation.
+
+```java
+// (1) Render the ID PASS Lite ID as a secure QR code image
 BufferedImage qrCode = Helper.toBufferedImage(card);
 
-// Scan the generated ID PASS Lite QR code with the reader
+// (2) Scan the generated ID PASS Lite QR code with the reader
 Card readCard = reader.open(Helper.scanQRCode(qrCode));
 
-// Biometrically authenticate into ID PASS Lite QR code ID using face recognition
+// (3) Biometrically authenticate into ID PASS Lite QR code ID using face recognition
 readCard.authenticateWithFace(photo);
 
 // Private identity details shall be available when authenticated
 readCard.getGivenName();
 ```
 
-An alternative initialization using **PKCS12** keystore file:
+## Related projects
 
-```java
-File p12File = new File("/path/to/demokeys.cfg.p12");
-InputStream is = new FileInputStream(p12File);
-IDPassReader reader = new IDPassReader("default", is, "changeit", "changeit");
-```
+- [idpass-lite](https://github.com/idpass/idpass-lite) - A library to create and issue biometrically-binding QR code identity cards.
 
+## License
+
+[Apache-2.0 License](LICENSE)

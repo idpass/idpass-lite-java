@@ -1,11 +1,11 @@
-# Contributing to ID PASS Lite
+# Contributing to ID PASS Lite Java
 
-Thank you for your interest to contribute to ID PASS Lite! We want to make contributing to this project as easy as possible, whether it's:
+Thank you for your interest to contribute to ID PASS Lite Java! We want to make contributing to this project as easy as possible, whether it's:
 
 - Reporting a bug
 - Discussing the current state of the code
 - Submitting a fix
-- Propositing new features
+- Proposing new features
 
 ## We develop with GitHub
 
@@ -23,7 +23,7 @@ We use [Gitflow](https://www.atlassian.com/git/tutorials/comparing-workflows/git
 
 ## Reporting bugs
 
-We use [GitHub issues](https://github.com/idpass/idpass-lite/issues) to track bugs. Report a bug by [opening a new issue](https://github.com/idpass/idpass-lite/issues/new).
+We use [GitHub issues](https://github.com/idpass/idpass-lite-java/issues) to track bugs. Report a bug by [opening a new issue](https://github.com/idpass/idpass-lite-java/issues/new).
 
 Write bug reports with detail, background, and sample code. An issue template is provided when opening a new issue, make sure to provide all the requested information to make it easier to address the issue.
 

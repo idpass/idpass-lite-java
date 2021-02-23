@@ -23,12 +23,14 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.api.proto.Certificates;
 import org.api.proto.Ident;
 import org.api.proto.KeySet;
+import org.api.proto.byteArray;
 import org.idpass.lite.Card;
 import org.idpass.lite.IDPassHelper;
 import org.idpass.lite.IDPassReader;
 import org.idpass.lite.exceptions.CardVerificationException;
 import org.idpass.lite.exceptions.IDPassException;
 import org.idpass.lite.exceptions.InvalidCardException;
+import org.idpass.lite.exceptions.InvalidKeyException;
 import org.idpass.lite.proto.*;
 import org.idpass.lite.test.utils.Helper;
 import org.junit.jupiter.api.DisplayName;
@@ -525,5 +527,66 @@ public class NarrativeTestCases {
 
         p12File.delete();
         qrFile.delete();
+    }
+
+    @Test
+    @DisplayName("README snippet demo")
+    public void demoTest() throws IDPassException, IOException {
+        // Generate cryptographic keys and initialize a keyset using these keys
+        byte[] encryptionkey = IDPassHelper.generateEncryptionKey();
+        byte[] signaturekey = IDPassHelper.generateSecretSignatureKey();
+        byte[] publicVerificationKey = IDPassHelper.getPublicKey(signaturekey);
+
+        KeySet keyset = KeySet.newBuilder()
+                .setEncryptionKey(ByteString.copyFrom(encryptionkey))
+                .setSignatureKey(ByteString.copyFrom(signaturekey))
+                .addVerificationKeys(byteArray.newBuilder()
+                        .setTyp(byteArray.Typ.ED25519PUBKEY)
+                        .setVal(ByteString.copyFrom(publicVerificationKey)).build())
+                .build();
+
+        // Generate certificates (this is optional)
+        byte[] rootkey = IDPassHelper.generateSecretSignatureKey();
+        Certificate rootcert = IDPassReader.generateRootCertificate(rootkey);
+        Certificates rootcerts = Certificates.newBuilder().addCert(rootcert).build();
+        Certificate childcert = IDPassReader.generateChildCertificate(rootkey, publicVerificationKey);
+        Certificates certchain = Certificates.newBuilder().addCert(childcert).build();
+
+        // Initialize IDPassReader object with the keyset and an optional certificate
+        IDPassReader reader = new IDPassReader(keyset, rootcerts);
+
+        // Scan photo of card ID owner
+        byte[] photo = Files.readAllBytes(Paths.get("testdata/florence_ID_Photo.jpg"));
+
+        // Set identity details into `Ident` object
+        Ident ident = Ident.newBuilder()
+                .setPhoto(ByteString.copyFrom(photo))
+                .setGivenName("MARION FLORENCE")
+                .setSurName("DUPONT")
+                .setPin("1234")
+                .setDateOfBirth(Date.newBuilder().setYear(1985).setMonth(1).setDay(1))
+                .addPubExtra(Pair.newBuilder().setKey("Sex").setValue("F"))
+                .addPubExtra(Pair.newBuilder().setKey("Nationality").setValue("French"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Issue").setValue("02 JAN 2025"))
+                .addPubExtra(Pair.newBuilder().setKey("Date Of Expiry").setValue("01 JAN 2035"))
+                .addPubExtra(Pair.newBuilder().setKey("ID").setValue("SA437277"))
+                .addPrivExtra(Pair.newBuilder().setKey("SS Number").setValue("2 85 01 75 116 001 42"))
+                .build();
+
+        // Generate a secure ID PASS Lite ID
+        Card card = reader.newCard(ident, certchain);
+
+        // (1) Render the ID PASS Lite ID as a secure QR code image
+        BufferedImage qrCode = Helper.toBufferedImage(card);
+
+        // (2) Scan the generated ID PASS Lite QR code with the reader
+        Card readCard = reader.open(Helper.scanQRCode(qrCode));
+
+        // (3) Biometrically authenticate into ID PASS Lite QR code ID using face recognition
+        readCard.authenticateWithFace(photo);
+
+        // Private identity details shall be available when authenticated
+        String givenName = readCard.getGivenName();
+        assertEquals(givenName, "MARION FLORENCE");
     }
 }
